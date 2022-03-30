@@ -1,0 +1,9 @@
+--wrapcollections before-first
+--wraparguments before-first
+--wrapparameters before-first
+--header strip
+--ifdef no-indent
+--enable wrapSwitchCases
+--enable organizeDeclarations
+--swiftversion 5.5
+--exclude ./Sources/MPSX/onnx.pb.swift
