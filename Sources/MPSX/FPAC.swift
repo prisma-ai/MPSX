@@ -1,6 +1,8 @@
 import Accelerate
 import Foundation
 
+typealias Float16 = UInt16
+
 /// Floating Point Accelerate Conversion
 enum FPAC {
     // MARK: Internal

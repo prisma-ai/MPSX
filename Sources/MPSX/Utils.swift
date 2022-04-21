@@ -58,10 +58,20 @@ extension MPSDataType {
         switch self {
         case .float16: return .float16
         case .float32: return .float32
-        case .int8,
-             .uInt8: return .unorm8
-        case .int16,
-             .uInt16: return .unorm16
+        case .uInt8: return .unorm8
+        case .uInt16: return .unorm16
+        default: assertionFailure(); return .float32
+        }
+    }
+}
+
+extension MPSImageFeatureChannelFormat {
+    var matchingDataType: MPSDataType {
+        switch self {
+        case .float16: return .float16
+        case .float32: return .float32
+        case .unorm8: return .uInt8
+        case .unorm16: return .uInt16
         default: assertionFailure(); return .float32
         }
     }
@@ -132,16 +142,16 @@ extension Data {
         }
     }
 
-    func floats<F: FloatingPoint>(assumingNonFloatDataType dataType: Onnx_TensorProto.DataType) -> [F]? {
+    func floats(assumingNonFloatDataType dataType: Onnx_TensorProto.DataType) -> [Float]? {
         switch dataType {
-        case .int8: return arrayOf(Int8.self).map { F($0) }
-        case .int16: return arrayOf(Int16.self).map { F($0) }
-        case .int32: return arrayOf(Int32.self).map { F($0) }
-        case .int64: return arrayOf(Int64.self).map { F($0) }
-        case .uint8: return arrayOf(UInt8.self).map { F($0) }
-        case .uint16: return arrayOf(UInt16.self).map { F($0) }
-        case .uint32: return arrayOf(UInt32.self).map { F($0) }
-        case .uint64: return arrayOf(UInt64.self).map { F($0) }
+        case .int8: return FPAC._Int8_Float32(arrayOf(Int8.self))
+        case .int16: return FPAC._Int16_Float32(arrayOf(Int16.self))
+        case .int32: return FPAC._Int32_Float32(arrayOf(Int32.self))
+        case .int64: return arrayOf(Int64.self).map { Float($0) }
+        case .uint8: return FPAC._UInt8_Float32(arrayOf(UInt8.self))
+        case .uint16: return FPAC._UInt16_Float32(arrayOf(UInt16.self))
+        case .uint32: return FPAC._UInt32_Float32(arrayOf(UInt32.self))
+        case .uint64: return arrayOf(UInt64.self).map { Float($0) }
         default: return nil
         }
     }
@@ -150,7 +160,7 @@ extension Data {
         switch dataType {
         case .float16: return arrayOf(Float16.self)
         case .float: return FPAC._Float32_Float16(arrayOf(Float.self))
-        default: return floats(assumingNonFloatDataType: dataType)
+        default: return floats(assumingNonFloatDataType: dataType).flatMap(FPAC._Float32_Float16(_:))
         }
     }
 

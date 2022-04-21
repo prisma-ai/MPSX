@@ -14,34 +14,46 @@ public extension OnnxGraph {
 
     func imageFrom(
         inputTextures: [String: MTLTexture],
-        scaler: MPSImageScale,
+        scaler: MPSImageScale?,
         in commandBuffer: MPSCommandBuffer
-    ) throws -> MPSTemporaryImage {
+    ) -> MPSTemporaryImage {
         let feedTensors = (executable.feedTensors ?? []).reduce(into: [:]) {
             $0[$1.operation.name] = $1
         }
 
         assert(Set(inputTextures.keys).isSubset(of: Set(feedTensors.keys)))
 
-        let inputsData: [String: MPSGraphTensorData] = try inputTextures.reduce(into: [:]) {
+        let inputsData: [String: MPSGraphTensorData] = inputTextures.reduce(into: [:]) {
             let tensor = feedTensors[$1.key]!
+            let shape = tensor.shape!
+            let texture = $1.value
 
-            $0[$1.key] = try MPSGraphIO.input(
-                shape: tensor.shape,
-                dataType: tensor.dataType,
-                texture: $1.value,
-                scaler: scaler,
-                commandBuffer: commandBuffer
-            )
+            if let scaler = scaler {
+                $0[$1.key] = MPSGraphIO.input(
+                    texture: $1.value,
+                    shape: shape,
+                    dataType: tensor.dataType,
+                    scaler: scaler,
+                    in: commandBuffer
+                )
+            } else {
+                assert(texture.height == shape[2].intValue && texture.width == shape[3].intValue)
+
+                $0[$1.key] = MPSGraphIO.input(
+                    image: .init(texture: $1.value, featureChannels: shape[1].intValue),
+                    dataType: tensor.dataType,
+                    in: commandBuffer
+                )
+            }
         }
 
         let outputs = encode(to: commandBuffer, inputsData: inputsData)
 
         assert(outputs.count == 1)
 
-        let image = try MPSGraphIO.output(
-            tensor: outputs[0],
-            commandBuffer: commandBuffer
+        let image = MPSGraphIO.output(
+            data: outputs[0],
+            in: commandBuffer
         )
 
         return image
@@ -50,15 +62,17 @@ public extension OnnxGraph {
     func texture2DFrom(
         inputTextures: [String: MTLTexture],
         pixelFormat: MTLPixelFormat = .bgra8Unorm,
-        scaler: MPSImageScale,
+        scaler: MPSImageScale?,
         converter: MPSImageConversion,
         in commandBuffer: MPSCommandBuffer
-    ) throws -> MTLTexture {
-        let image = try imageFrom(
-            inputTextures: inputTextures,
-            scaler: scaler,
-            in: commandBuffer
-        )
+    ) -> MTLTexture {
+        let image = autoreleasepool {
+            imageFrom(
+                inputTextures: inputTextures,
+                scaler: scaler,
+                in: commandBuffer
+            )
+        }
 
         defer {
             image.readCount = 0

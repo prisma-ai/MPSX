@@ -3,10 +3,6 @@ import MetalPerformanceShadersGraph
 public enum MPSGraphIO {
     // MARK: Public
 
-    public enum Error: Swift.Error {
-        case wrongShape
-    }
-
     public static func constant(
         value: Double,
         for inputs: [MPSGraphTensor],
@@ -37,104 +33,104 @@ public enum MPSGraphIO {
     }
 
     public static func input(
-        shape: [NSNumber]?,
-        dataType: MPSDataType,
         texture: MTLTexture,
+        shape: [NSNumber],
+        dataType: MPSDataType,
         scaler: MPSImageScale,
-        commandBuffer: MPSCommandBuffer
-    ) throws -> MPSGraphTensorData {
-        guard let nchw = shape?.map(\.intValue).quad,
-              nchw.0 == 1,
-              nchw.1 > 0, nchw.1 <= 4,
-              nchw.2 > 0, nchw.3 > 0
-        else {
-            throw Error.wrongShape
+        in commandBuffer: MPSCommandBuffer
+    ) -> MPSGraphTensorData {
+        let image = MPSTemporaryImage(
+            commandBuffer: commandBuffer,
+            imageDescriptor: .init(
+                channelFormat: dataType.matchingImageChannelFormat,
+                width: shape[3].intValue,
+                height: shape[2].intValue,
+                featureChannels: shape[1].intValue,
+                numberOfImages: shape[0].intValue,
+                usage: [.shaderRead, .shaderWrite]
+            )
+        )
+
+        defer {
+            image.readCount = 0
         }
 
-        let nhwc = [nchw.0, nchw.2, nchw.3, nchw.1].map {
+        scaler.encode(
+            commandBuffer: commandBuffer,
+            sourceTexture: texture,
+            destinationTexture: image.texture
+        )
+
+        let result = input(
+            image: image,
+            dataType: dataType,
+            in: commandBuffer
+        )
+
+        return result
+    }
+
+    public static func input(
+        image: MPSImage,
+        dataType: MPSDataType?,
+        in commandBuffer: MPSCommandBuffer
+    ) -> MPSGraphTensorData {
+        let shape = [image.numberOfImages, image.height, image.width, image.featureChannels].map {
             NSNumber(value: $0)
         }
 
-        return autoreleasepool {
-            let image = MPSTemporaryImage(
-                commandBuffer: commandBuffer,
-                imageDescriptor: .init(
-                    channelFormat: dataType.matchingImageChannelFormat,
-                    width: nhwc[2].intValue,
-                    height: nhwc[1].intValue,
-                    featureChannels: nhwc[3].intValue,
-                    numberOfImages: nhwc[0].intValue,
-                    usage: [.shaderRead, .shaderWrite]
-                )
+        let array = MPSTemporaryNDArray(
+            commandBuffer: commandBuffer,
+            descriptor: .init(
+                dataType: dataType ?? image.featureChannelFormat.matchingDataType,
+                shape: shape
             )
+        )
 
-            scaler.encode(
-                commandBuffer: commandBuffer,
-                sourceTexture: texture,
-                destinationTexture: image.texture
-            )
-
-            let array = MPSTemporaryNDArray(
-                commandBuffer: commandBuffer,
-                descriptor: .init(
-                    dataType: dataType,
-                    shape: nhwc
-                )
-            )
-
-            array.importData(
-                with: commandBuffer,
-                from: image.batchRepresentation(),
-                offset: .init()
-            )
-
-            image.readCount = 0
-
-            let result = transpose(
-                array: array,
-                shape: nhwc,
-                perm: (2, 3, 1, 2),
-                commandBuffer: commandBuffer
-            )
-
+        defer {
             array.readCount = 0
-
-            return result
         }
+
+        array.importData(
+            with: commandBuffer,
+            from: image.batchRepresentation(),
+            offset: .init()
+        )
+
+        let result = transpose(
+            inputData: .init(array),
+            perm: (2, 3, 1, 2),
+            commandBuffer: commandBuffer
+        )
+
+        return result
     }
 
     public static func output(
-        tensor data: MPSGraphTensorData,
-        commandBuffer: MPSCommandBuffer
-    ) throws -> MPSTemporaryImage {
-        guard data.shape.count == 4 else {
-            throw Error.wrongShape
-        }
-
-        let outputValue = autoreleasepool {
-            transpose(
-                array: data.mpsndarray(),
-                shape: data.shape,
-                perm: (1, 2, 2, 3),
-                commandBuffer: commandBuffer
-            )
-        }
+        data: MPSGraphTensorData,
+        in commandBuffer: MPSCommandBuffer
+    ) -> MPSTemporaryImage {
+        let outputData = transpose(
+            inputData: data,
+            perm: (1, 2, 2, 3),
+            commandBuffer: commandBuffer
+        )
 
         let image = MPSTemporaryImage(
             commandBuffer: commandBuffer,
             imageDescriptor: .init(
-                channelFormat: data.dataType.matchingImageChannelFormat,
-                width: outputValue.shape[2].intValue,
-                height: outputValue.shape[1].intValue,
-                featureChannels: outputValue.shape[3].intValue,
-                numberOfImages: outputValue.shape[0].intValue,
+                channelFormat: outputData.dataType.matchingImageChannelFormat,
+                width: outputData.shape[2].intValue,
+                height: outputData.shape[1].intValue,
+                featureChannels: outputData.shape[3].intValue,
+                numberOfImages: outputData.shape[0].intValue,
                 usage: [.shaderRead, .shaderWrite]
             )
         )
 
         image.readCount = .max
 
-        outputValue.mpsndarray().exportData(
+        outputData.mpsndarray().exportData(
             with: commandBuffer,
             to: image.batchRepresentation(),
             offset: .init()
@@ -147,8 +143,7 @@ public enum MPSGraphIO {
 
     /// The weirdest part of the graph execution: if we insert a transpose operation after the original placeholder, the graph execution will be much slower than it should be. Therefore, we perform transposition as a separate graph.
     private static func transpose(
-        array: MPSNDArray,
-        shape: [NSNumber],
+        inputData: MPSGraphTensorData,
         perm: Quad<Int>,
         commandBuffer: MPSCommandBuffer
     ) -> MPSGraphTensorData {
@@ -156,8 +151,8 @@ public enum MPSGraphIO {
         graph.options = .none
 
         let input = graph.placeholder(
-            shape: shape,
-            dataType: array.dataType,
+            shape: inputData.shape,
+            dataType: inputData.dataType,
             name: nil
         )
 
@@ -173,14 +168,14 @@ public enum MPSGraphIO {
             name: nil
         )
 
-        let result = graph.encode(
+        let outputData = graph.encode(
             to: commandBuffer,
-            feeds: [input: .init(array)],
+            feeds: [input: inputData],
             targetTensors: [output],
             targetOperations: nil,
             executionDescriptor: nil
         )[output]!
 
-        return result
+        return outputData
     }
 }
