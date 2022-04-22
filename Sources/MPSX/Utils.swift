@@ -85,11 +85,11 @@ extension Onnx_TensorProto.DataType {
         case .uint8: return .uInt8
         case .uint16: return .uInt16
         case .uint32: return .uInt32
-        case .uint64: return .uInt64
+        case .uint64: if #available(iOS 14.1, *) { return .uInt64 }; return nil
         case .int8: return .int8
         case .int16: return .int16
         case .int32: return .int32
-        case .int64: return .int64
+        case .int64: if #available(iOS 14.1, *) { return .int64 }; return nil
         default: return nil
         }
     }

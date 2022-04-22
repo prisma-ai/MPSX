@@ -6,9 +6,8 @@ import PackageDescription
 let package = Package(
     name: "MPSX",
     platforms: [
-        .iOS(.v15),
-        .tvOS(.v15),
-        .macOS(.v12),
+        .iOS(.v14),
+        .macOS(.v11),
     ],
     products: [
         .library(name: "MPSX", targets: ["MPSX"]),
@@ -17,7 +16,7 @@ let package = Package(
         .package(
             name: "SwiftProtobuf",
             url: "https://github.com/apple/swift-protobuf.git",
-            .upToNextMajor(from: "1.18.0")
+            .upToNextMajor(from: "1.19.0")
         ),
     ],
     targets: [

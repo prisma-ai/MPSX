@@ -11,7 +11,11 @@ extension MPSGraph {
               let alpha = constants(node.input(1))?.floats?.first
         else { throw OnnxError.invalidInput(node.name) }
 
-        return leakyReLU(with: input, alpha: Double(alpha), name: nil)
+        if #available(iOS 15.0, macOS 12.0, *) {
+            return leakyReLU(with: input, alpha: Double(alpha), name: nil)
+        } else {
+            return prelu(input: input, alpha: alpha)
+        }
     }
 
     /// https://pytorch.org/docs/stable/generated/torch.nn.PReLU.html

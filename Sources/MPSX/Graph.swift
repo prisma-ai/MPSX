@@ -1,5 +1,6 @@
 import MetalPerformanceShadersGraph
 
+@available(iOS 15.0, macOS 12.0, *)
 public final class OnnxGraph {
     // MARK: Lifecycle
 

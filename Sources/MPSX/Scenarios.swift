@@ -1,5 +1,6 @@
 import MetalPerformanceShadersGraph
 
+@available(iOS 15.0, macOS 12.0, *)
 public extension OnnxGraph {
     func warmUp(in commandBuffer: MPSCommandBuffer, constant: Double = 0.5) {
         _ = encode(
