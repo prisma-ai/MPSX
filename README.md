@@ -1,3 +1,3 @@
-# MPSX
+# MPSGraph + ONNX
 
-TBD
+![MPSX](logo.svg)
