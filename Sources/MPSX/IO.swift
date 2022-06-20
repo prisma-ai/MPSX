@@ -205,6 +205,14 @@ public enum MPSGraphIO {
     }
 }
 
+public extension MPSGraphTensorData {
+    func synchronizedNDArray(on commandBuffer: MTLCommandBuffer) -> MPSNDArray {
+        let ndarray = mpsndarray()
+        ndarray.synchronize(on: commandBuffer)
+        return ndarray
+    }
+}
+
 public extension MPSNDArray {
     /// Access to underlying data ​​on the CPU side. Requires a `synchronize(on: commandBuffer)` instance call during GPU commands encoding.
     var floats: [Float] {

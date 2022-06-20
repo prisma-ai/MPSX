@@ -59,14 +59,10 @@ final class Tests: XCTestCase {
 
         func predict() -> MPSNDArray {
             gpu.commandQueue.sync {
-                let output = graph.encode(
+                graph.encode(
                     to: $0,
                     inputsData: [model.inputs[0].name: input]
-                )[0].mpsndarray()
-
-                output.synchronize(on: $0)
-
-                return output
+                )[0].synchronizedNDArray(on: $0)
             }
         }
 
