@@ -21,5 +21,6 @@ let package = Package(
     ],
     targets: [
         .target(name: "MPSX", dependencies: ["SwiftProtobuf"]),
+        .testTarget(name: "MPSXTests", dependencies: ["MPSX"]),
     ]
 )
