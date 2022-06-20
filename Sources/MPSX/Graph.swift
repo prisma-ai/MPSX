@@ -4,6 +4,11 @@ import MetalPerformanceShadersGraph
 public final class OnnxGraph {
     // MARK: Lifecycle
 
+    /// Initialize graph instance
+    /// - Parameters:
+    ///   - model: onnx model
+    ///   - device: metal device for graph compilation
+    ///   - config: graph building configuration
     public init(
         model: OnnxModel,
         device: MTLDevice,
@@ -82,6 +87,10 @@ public final class OnnxGraph {
                 output = try mpsGraph.pad(node, tensors, constants)
             case "Reshape":
                 output = try mpsGraph.reshape(node, tensors, constants)
+            case "Squeeze":
+                output = try mpsGraph.squeeze(node, tensors, constants)
+            case "Unsqueeze":
+                output = try mpsGraph.unsqueeze(node, tensors, constants)
             case "Shape":
                 output = try mpsGraph.shape(node, tensors)
             case "Relu":
@@ -99,12 +108,18 @@ public final class OnnxGraph {
                 output = try mpsGraph.resize(node, tensors, constants)
             case "Tanh":
                 output = try mpsGraph.tanh(node, tensors)
+            case "Softmax":
+                output = try mpsGraph.softmax(node, tensors)
             case "Flatten":
                 output = try mpsGraph.flatten(node, tensors)
             case "Transpose":
                 output = try mpsGraph.permute(node, tensors)
             case "Slice":
                 output = try mpsGraph.slice(node, tensors, constants)
+            case "ReduceMean":
+                output = try mpsGraph.reduceMean(node, tensors, constants)
+            case "Dropout":
+                output = try mpsGraph.dropout(node, tensors, constants)
             case "Constant":
                 guard let value = node.attr("value") else {
                     throw OnnxError.invalidInput(node.name)
@@ -160,12 +175,22 @@ public final class OnnxGraph {
         }
 
         executable.options = mpsGraph.options
+
+        inputDataTypes = (executable.feedTensors ?? []).reduce(into: [:]) {
+            $0[$1.operation.name] = $1.dataType
+        }
     }
 
     // MARK: Public
 
     public let inputShapes: [String: [NSNumber]]
+    public let inputDataTypes: [String: MPSDataType]
 
+    /// Graph launch with raw IO
+    /// - Parameters:
+    ///   - commandBuffer: Current GPU command buffer instance. The command buffer metal device must be the same as the device used to compile the graph.
+    ///   - inputsData: raw inputs table (input name -> MPSGraphTensorData)
+    /// - Returns: raw outputs
     public func encode(
         to commandBuffer: MPSCommandBuffer,
         inputsData: [String: MPSGraphTensorData]

@@ -27,19 +27,19 @@ extension MPSGraph {
             throw OnnxError.invalidInput(#function)
         }
 
-        var dict: [String: MPSGraphTensor] = [:]
-        dict.reserveCapacity(outputs.count)
+        var outputTensors: [String: MPSGraphTensor] = [:]
+        outputTensors.reserveCapacity(outputs.count)
 
-        return (0 ..< outputs.count).reduce(into: dict) { outputTensors, i in
-            let start = i == 0 ? 0 : chunks.prefix(upTo: i).reduce(0, +)
-
+        (0 ..< outputs.count).forEach { i in
             outputTensors[outputs[i]] = sliceTensor(
                 input,
                 dimension: axis,
-                start: start,
+                start: chunks.prefix(upTo: i).reduce(0, +),
                 length: chunks[i],
                 name: nil
             )
         }
+
+        return outputTensors
     }
 }

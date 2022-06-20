@@ -31,9 +31,9 @@ public struct OnnxGraphConfig: Codable {
 
         // MARK: Public
 
-        /// dynamic shape values: dim -> value (ex.: NCHW `[2: 512, 3: 512]`)
+        /// Dynamic shape values: dim -> value (ex.: NCHW `[2: 512, 3: 512]`)
         public var dims: [Int: Int]? = nil
-        /// values range for denormalization (ex.: [0;1] -> [-1;1])
+        /// Values range for denormalization (ex.: [0;1] -> [-1;1])
         public var valuesRange: SIMD2<Float>?
     }
 
@@ -48,11 +48,13 @@ public struct OnnxGraphConfig: Codable {
 
         // MARK: Public
 
-        /// values range for normalization (ex.: [-1;1] -> [0;1])
+        /// Values range for normalization (ex.: [-1;1] -> [0;1])
         public var valuesRange: SIMD2<Float>?
     }
 
     public var inputs: [String: Input] = [:]
     public var outputs: [String: Output] = [:]
+
+    /// All tensors (constants, external and internal inputs/outputs) will have this data type
     public var tensorsDataType: TensorsDataType = .fp16
 }

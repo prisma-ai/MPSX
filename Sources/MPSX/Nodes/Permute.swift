@@ -7,27 +7,35 @@ extension MPSGraph {
         _ tensors: [String: MPSGraphTensor]
     ) throws -> MPSGraphTensor {
         guard let input = tensors(node.input(0)),
-              let perm = node.attr(ints: "perm")
+              var perm = node.attr(ints: "perm")
         else { throw OnnxError.invalidInput(node.name) }
 
-        let transpositions: [(Int, Int)]
-
-        // pixel shuffle permutation (TODO: general algorithm)
-        if perm == [0, 1, 4, 2, 5, 3] {
-            transpositions = [(2, 4), (3, 4), (4, 5)]
-        } else {
-            throw OnnxError.unsupportedOperator(node.name)
-        }
+        // https://github.com/pytorch/pytorch/blob/af3964a8725236c78ce969b827fdeee1c5c54110/torch/tensor.py#L200
 
         var output = input
 
-        transpositions.forEach { dim1, dim2 in
-            output = transposeTensor(
-                output,
-                dimension: dim2,
-                withDimension: dim1,
-                name: nil
-            )
+        for i in perm.indices {
+            let p = perm[i]
+
+            if p != i, p != -1 {
+                var j = i
+
+                while true {
+                    let k = perm[j]
+
+                    output = transposeTensor(output, dimension: j, withDimension: k, name: nil)
+
+                    perm[j] = -1
+
+                    j = k
+
+                    if perm[j] == i {
+                        break
+                    }
+                }
+
+                perm[j] = -1
+            }
         }
 
         return output

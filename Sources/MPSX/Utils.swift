@@ -53,6 +53,39 @@ extension Data {
     }
 }
 
+extension MPSNDArray {
+    private func arrayOf<T: Numeric>(_: T.Type) -> [T] {
+        let stride = MemoryLayout<T>.stride
+
+        assert(stride == dataTypeSize)
+
+        let count = (0 ..< numberOfDimensions).reduce(1) {
+            $0 * length(ofDimension: $1)
+        }
+
+        var array = [T](repeating: 0, count: count)
+        readBytes(&array, strideBytes: nil)
+        return array
+    }
+
+    func arrayOfFloats() -> [Float] {
+        switch dataType {
+        case .float32: return arrayOf(Float.self)
+        case .float16: return FPAC._Float16_Float32(arrayOf(Float16.self))
+
+        case .int8: return FPAC._Int8_Float32(arrayOf(Int8.self))
+        case .int16: return FPAC._Int16_Float32(arrayOf(Int16.self))
+        case .int32: return FPAC._Int32_Float32(arrayOf(Int32.self))
+
+        case .uInt8: return FPAC._UInt8_Float32(arrayOf(UInt8.self))
+        case .uInt16: return FPAC._UInt16_Float32(arrayOf(UInt16.self))
+        case .uInt32: return FPAC._UInt32_Float32(arrayOf(UInt32.self))
+
+        default: preconditionFailure("Unsupported data type: \(dataType)")
+        }
+    }
+}
+
 extension MPSDataType {
     var matchingImageChannelFormat: MPSImageFeatureChannelFormat {
         switch self {

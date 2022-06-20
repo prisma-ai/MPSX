@@ -3,6 +3,12 @@ import MetalPerformanceShadersGraph
 public enum MPSGraphIO {
     // MARK: Public
 
+    /// Helper API for graph warm-up
+    /// - Parameters:
+    ///   - value: constant value for each input
+    ///   - inputs: graph placeholders
+    ///   - commandBuffer: current GPU command buffer instance
+    /// - Returns: Inputs for direct feed to the graph
     public static func constant(
         value: Double,
         for inputs: [MPSGraphTensor],
@@ -32,6 +38,14 @@ public enum MPSGraphIO {
         return results
     }
 
+    /// Helper API to convert MTLTexture to MPSGraphTensorData with automatic scaling to input H and W
+    /// - Parameters:
+    ///   - texture: input texture
+    ///   - shape: target NCHW shape
+    ///   - dataType: target placeholder tensor data type
+    ///   - scaler: MPSImageScale instance for automatic texture scale
+    ///   - commandBuffer: current GPU command buffer instance
+    /// - Returns: MPSGraphTensorData instance with NCHW data layout
     public static func input(
         texture: MTLTexture,
         shape: [NSNumber],
@@ -70,6 +84,12 @@ public enum MPSGraphIO {
         return result
     }
 
+    /// Converts MPSImage to MPSGraphTensorData by doing NHWC -> NCHW transpose under the hood
+    /// - Parameters:
+    ///   - image: input image
+    ///   - dataType: target placeholder tensor data type
+    ///   - commandBuffer: current GPU command buffer instance
+    /// - Returns: MPSGraphTensorData instance with NCHW data layout
     public static func input(
         image: MPSImage,
         dataType: MPSDataType?,
@@ -106,6 +126,11 @@ public enum MPSGraphIO {
         return result
     }
 
+    /// Converts MPSGraphTensorData to MPSTemporaryImage by doing NCHW -> NHWC transpose under the hood
+    /// - Parameters:
+    ///   - data: graph output data with NCHW data layout
+    ///   - commandBuffer: current GPU command buffer instance
+    /// - Returns: MPSTemporaryImage image instance
     public static func output(
         data: MPSGraphTensorData,
         in commandBuffer: MPSCommandBuffer
@@ -177,5 +202,12 @@ public enum MPSGraphIO {
         )[output]!
 
         return outputData
+    }
+}
+
+public extension MPSNDArray {
+    /// Access to underlying data ​​on the CPU side. Requires a `synchronize(on: commandBuffer)` instance call during GPU commands encoding.
+    var floats: [Float] {
+        arrayOfFloats()
     }
 }
