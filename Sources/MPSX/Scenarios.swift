@@ -1,6 +1,5 @@
 import MetalPerformanceShadersGraph
 
-@available(iOS 15.0, macOS 12.0, *)
 public extension OnnxGraph {
     /// First run of the graph is slow, and for optimal runtime performance, call this method first. Optional.
     /// - Parameters:
@@ -28,14 +27,10 @@ public extension OnnxGraph {
         scaler: MPSImageScale,
         in commandBuffer: MPSCommandBuffer
     ) -> MPSTemporaryImage {
-        let feedTensors = (executable.feedTensors ?? []).reduce(into: [:]) {
-            $0[$1.operation.name] = $1
-        }
-
         assert(Set(inputTextures.keys).isSubset(of: Set(feedTensors.keys)))
 
         let inputsData: [String: MPSGraphTensorData] = inputTextures.reduce(into: [:]) {
-            let tensor = feedTensors[$1.key]!
+            let tensor = self.feedTensors[$1.key]!
             let shape = tensor.shape!
             let texture = $1.value
 

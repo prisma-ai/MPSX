@@ -1,6 +1,5 @@
 import MetalPerformanceShadersGraph
 
-@available(iOS 15.0, macOS 12.0, *)
 public final class OnnxGraph {
     // MARK: Lifecycle
 
@@ -162,29 +161,47 @@ public final class OnnxGraph {
 
         graph = mpsGraph
 
-        executable = autoreleasepool {
-            mpsGraph.compile(
-                with: .init(mtlDevice: device),
-                feeds: mpsGraph.placeholderTensors.reduce(into: [:]) { feeds, placeholder in
-                    feeds[placeholder] = .init(shape: placeholder.shape, dataType: placeholder.dataType)
-                },
-                targetTensors: outputs,
-                targetOperations: nil,
-                compilationDescriptor: nil
-            )
-        }
+        if #available(iOS 15.0, macOS 12.0, *) {
+            let executable = autoreleasepool {
+                mpsGraph.compile(
+                    with: .init(mtlDevice: device),
+                    feeds: mpsGraph.placeholderTensors.reduce(into: [:]) { feeds, placeholder in
+                        feeds[placeholder] = .init(shape: placeholder.shape, dataType: placeholder.dataType)
+                    },
+                    targetTensors: outputs,
+                    targetOperations: nil,
+                    compilationDescriptor: nil
+                )
+            }
 
-        executable.options = mpsGraph.options
+            executable.options = mpsGraph.options
 
-        inputDataTypes = (executable.feedTensors ?? []).reduce(into: [:]) {
-            $0[$1.operation.name] = $1.dataType
+            self.feedTensors = (executable.feedTensors ?? []).reduce(into: [:]) {
+                $0[$1.operation.name] = $1
+            }
+
+            self.executable = { commandBuffer, inputsData in
+                executable.encode(
+                    to: commandBuffer,
+                    inputs: (executable.feedTensors ?? []).compactMap {
+                        inputsData[$0.operation.name]
+                    },
+                    results: nil,
+                    executionDescriptor: nil
+                )
+            }
+        } else {
+            preconditionFailure("unsupported os/version")
         }
     }
 
     // MARK: Public
 
     public let inputShapes: [String: [NSNumber]]
-    public let inputDataTypes: [String: MPSDataType]
+
+    public var inputDataTypes: [String: MPSDataType] {
+        feedTensors.mapValues(\.dataType)
+    }
 
     /// Graph launch with raw IO
     /// - Parameters:
@@ -196,19 +213,13 @@ public final class OnnxGraph {
         inputsData: [String: MPSGraphTensorData]
     ) -> [MPSGraphTensorData] {
         autoreleasepool {
-            executable.encode(
-                to: commandBuffer,
-                inputs: (executable.feedTensors ?? []).compactMap {
-                    inputsData[$0.operation.name]
-                },
-                results: nil,
-                executionDescriptor: nil
-            )
+            self.executable(commandBuffer, inputsData)
         }
     }
 
     // MARK: Internal
 
     let graph: MPSGraph
-    let executable: MPSGraphExecutable
+    let feedTensors: [String: MPSGraphTensor]
+    let executable: (MPSCommandBuffer, [String: MPSGraphTensorData]) -> [MPSGraphTensorData]
 }
