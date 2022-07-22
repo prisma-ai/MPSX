@@ -81,11 +81,14 @@ extension MPSGraph {
               let groups = constants(node.input(1))?.floats?.first
         else { throw OnnxError.invalidInput(node.name) }
 
+        let epsilon = constants(node.input(4))?.floats?.first
+
         return try groupNorm(
             input: input,
             gamma: gamma,
             beta: beta,
-            groups: Int(groups)
+            groups: Int(groups),
+            epsilon: epsilon
         )
     }
 
@@ -95,7 +98,8 @@ extension MPSGraph {
         input: MPSGraphTensor,
         gamma: MPSGraphTensor,
         beta: MPSGraphTensor,
-        groups: Int
+        groups: Int,
+        epsilon: Float?
     ) throws -> MPSGraphTensor {
         guard let origShape = input.quadShape else {
             throw OnnxError.invalidInput(#function)
@@ -129,7 +133,7 @@ extension MPSGraph {
             variance: variance,
             gamma: reshape(gamma, shape: newShape, name: nil),
             beta: reshape(beta, shape: newShape, name: nil),
-            epsilon: 1e-05,
+            epsilon: epsilon ?? 1e-05,
             name: nil
         )
 
