@@ -14,6 +14,6 @@ extension MPSGraph {
               node.attribute.isEmpty
         else { throw OnnxError.invalidInput(node.name) }
 
-        return cast(shapeOf(input, name: nil), to: input.dataType, name: "")
+        return cast(shapeOf(input, name: nil), to: input.dataType)
     }
 }

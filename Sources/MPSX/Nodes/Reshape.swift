@@ -26,7 +26,7 @@ extension MPSGraph {
         if let shape = tensors(node.input(1)) {
             return reshape(
                 input,
-                shapeTensor: cast(shape, to: .int32, name: ""),
+                shapeTensor: cast(shape, to: .int32),
                 name: nil
             )
         }
