@@ -6,7 +6,7 @@ extension MPSGraph {
         _ input: MPSGraphTensor,
         to dataType: MPSDataType
     ) -> MPSGraphTensor {
-        // empty name causes crash on ios < 16
+        // empty name causes crash on ios 16
         cast(input, to: dataType, name: "cast_\(UUID().uuidString)")
     }
 }
