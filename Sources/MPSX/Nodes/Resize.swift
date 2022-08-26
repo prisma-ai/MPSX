@@ -13,13 +13,15 @@ extension MPSGraph {
 
         return try resize(
             input: input,
-            scales: node.input.dropFirst().compactMap { constants[$0]?.floats?.quad }.first ?? node.attr(floats: "scales")?.quad
+            scales: node.input.dropFirst().compactMap { constants[$0]?.floats?.quad }.first ?? node.attr(floats: "scales")?.quad,
+            linear: node.attr(s: "mode") == "linear"
         )
     }
 
     func resize(
         input: MPSGraphTensor,
-        scales: Quad<Float>?
+        scales: Quad<Float>?,
+        linear: Bool
     ) throws -> MPSGraphTensor {
         guard let scales = scales, scales.2 != 1, scales.3 != 1 else {
             return input
@@ -35,7 +37,7 @@ extension MPSGraph {
                 NSNumber(value: (Float(shape.2) * scales.2).rounded(.down)),
                 NSNumber(value: (Float(shape.3) * scales.3).rounded(.down)),
             ],
-            mode: .nearest,
+            mode: linear ? .bilinear : .nearest,
             centerResult: false,
             alignCorners: true,
             layout: .NCHW,
