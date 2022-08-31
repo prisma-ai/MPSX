@@ -108,7 +108,7 @@ let texture: MTLTexture = graph.texture2DFrom(
 
 # Links
 
-[MPSCommandBuffer explanation](https://developer.apple.com/videos/play/wwdc2019/614/?time=1284)
+[MPSCommandBuffer explanation](https://geor.blog/mpscommandbuffer/)
 
 # Limitations
 
