@@ -8,10 +8,12 @@ import XCTest
 final class Tests: XCTestCase {
     // https://github.com/onnx/models/tree/main/vision/classification/shufflenet
     func testShuffleNet() async throws {
-        // STEP 0️⃣: download model and imagenet labels
+        // STEP 0️⃣: setup model and imagenet labels
 
-        let model = try await OnnxModel(data: Data(contentsOf: download(file: "https://raw.githubusercontent.com/onnx/models/main/vision/classification/shufflenet/model/shufflenet-v2-12.onnx")))
-        let labels = try await String(data: Data(contentsOf: download(file: "https://raw.githubusercontent.com/pytorch/hub/master/imagenet_classes.txt")), encoding: .utf8)!.split(separator: "\n")
+        // ⚠️⚠️⚠️ onnx files are located in git lfs
+
+        let model = try OnnxModel(data: Data(contentsOf: Bundle.module.url(forResource: "Resources/shufflenet-v2-12.onnx", withExtension: nil)!))
+        let labels = try String(data: Data(contentsOf: Bundle.module.url(forResource: "Resources/imagenet_classes.txt", withExtension: nil)!), encoding: .utf8)!.split(separator: "\n")
 
         // STEP 1️⃣: setup metal stuff
 
@@ -77,9 +79,11 @@ final class Tests: XCTestCase {
 
     // https://github.com/onnx/models/tree/main/vision/style_transfer/fast_neural_style
     func testStyleTransfer() async throws {
-        // STEP 0️⃣: download model
+        // STEP 0️⃣: setup model
 
-        let model = try await OnnxModel(data: Data(contentsOf: download(file: "https://media.githubusercontent.com/media/onnx/models/main/vision/style_transfer/fast_neural_style/model/candy-8.onnx")))
+        // ⚠️⚠️⚠️ onnx files are located in git lfs
+
+        let model = try OnnxModel(data: Data(contentsOf: Bundle.module.url(forResource: "Resources/candy-8.onnx", withExtension: nil)!))
 
         // STEP 1️⃣: setup metal stuff
 

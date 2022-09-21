@@ -4,21 +4,6 @@ import Metal
 import MetalKit
 import MetalPerformanceShaders
 
-@available(macOS 12.0, *)
-func download(file: String) async throws -> URL {
-    let fileURL = URL(string: file)!
-
-    let targetURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileURL.lastPathComponent)
-
-    if !FileManager.default.fileExists(atPath: targetURL.path) {
-        let (tmpURL, _) = try await URLSession.shared.download(from: fileURL)
-
-        try FileManager.default.moveItem(at: tmpURL, to: targetURL)
-    }
-
-    return targetURL
-}
-
 extension MTLCommandQueue {
     @discardableResult
     func sync<T>(_ body: (MPSCommandBuffer) throws -> T) rethrows -> T {
