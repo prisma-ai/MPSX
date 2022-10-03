@@ -23,8 +23,7 @@ let package = Package(
         .target(name: "MPSX", dependencies: ["SwiftProtobuf"]),
         .testTarget(
             name: "MPSXTests",
-            dependencies: ["MPSX"],
-            resources: [.copy("Resources")]
+            dependencies: ["MPSX"]
         ),
     ]
 )

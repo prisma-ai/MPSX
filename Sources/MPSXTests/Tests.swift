@@ -10,10 +10,10 @@ final class Tests: XCTestCase {
     func testShuffleNet() async throws {
         // STEP 0️⃣: setup model and imagenet labels
 
-        // ⚠️⚠️⚠️ onnx files are located in git lfs
+        // ⚠️⚠️⚠️ You can find required files in 1.1.1 release attachments
 
-        let model = try OnnxModel(data: Data(contentsOf: Bundle.module.url(forResource: "Resources/shufflenet-v2-12.onnx", withExtension: nil)!))
-        let labels = try String(data: Data(contentsOf: Bundle.module.url(forResource: "Resources/imagenet_classes.txt", withExtension: nil)!), encoding: .utf8)!.split(separator: "\n")
+        let model = try OnnxModel(data: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2]))) // shufflenet-v2-12.onnx
+        let labels = try String(data: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[3])), encoding: .utf8)!.split(separator: "\n") // imagenet_classes.txt
 
         // STEP 1️⃣: setup metal stuff
 
@@ -81,9 +81,9 @@ final class Tests: XCTestCase {
     func testStyleTransfer() async throws {
         // STEP 0️⃣: setup model
 
-        // ⚠️⚠️⚠️ onnx files are located in git lfs
+        // ⚠️⚠️⚠️ You can find required files in 1.1.1 release attachments
 
-        let model = try OnnxModel(data: Data(contentsOf: Bundle.module.url(forResource: "Resources/candy-8.onnx", withExtension: nil)!))
+        let model = try OnnxModel(data: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2]))) // candy-8.onnx
 
         // STEP 1️⃣: setup metal stuff
 
