@@ -16,7 +16,7 @@ extension MPSGraph {
             throw OnnxError.unsupportedTensorDataType(onnx: nil, mps: targetDataType.rawValue)
         }
 
-        guard let data = data else {
+        guard let data else {
             throw OnnxError.unsupportedTensorDataType(onnx: tensor.dataType, mps: nil)
         }
 

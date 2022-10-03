@@ -37,7 +37,7 @@ extension MPSGraph {
             name: nil
         )
 
-        if let alpha = alpha, alpha != 1 {
+        if let alpha, alpha != 1 {
             output = multiplication(
                 constant(Double(alpha), dataType: output.dataType),
                 output,
@@ -45,8 +45,8 @@ extension MPSGraph {
             )
         }
 
-        if var C = C {
-            if let beta = beta, beta != 1 {
+        if var C {
+            if let beta, beta != 1 {
                 C = multiplication(
                     constant(Double(beta), dataType: C.dataType),
                     C,

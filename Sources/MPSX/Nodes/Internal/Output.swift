@@ -7,7 +7,7 @@ extension MPSGraph {
     ) -> MPSGraphTensor {
         var outputTensor = tensor
 
-        if let valuesRange = valuesRange {
+        if let valuesRange {
             let dataType = outputTensor.dataType
 
             outputTensor = division(

@@ -5,5 +5,6 @@
 --ifdef no-indent
 --enable wrapSwitchCases
 --enable organizeDeclarations
---swiftversion 5.5
---exclude ./Sources/MPSX/onnx.pb.swift
+--enable redundantOptionalBinding
+--swiftversion 5.7
+--exclude **/*.pb.swift

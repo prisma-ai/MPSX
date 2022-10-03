@@ -31,7 +31,7 @@ extension MPSGraph {
             name: nil
         )
 
-        if let alpha = alpha, alpha != 1 {
+        if let alpha, alpha != 1 {
             output = multiplication(
                 output,
                 constant(Double(alpha), dataType: input.dataType),

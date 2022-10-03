@@ -13,7 +13,7 @@ extension MPSGraph {
             name: name
         )
 
-        if let valuesRange = valuesRange {
+        if let valuesRange {
             inputTensor = addition(
                 multiplication(
                     constant(.init(valuesRange.y - valuesRange.x), dataType: dataType),

@@ -37,7 +37,7 @@ extension MPSGraph {
         pads: [Int]?,
         value: Float?
     ) throws -> MPSGraphTensor {
-        guard let pads = pads, pads.count == 8 else {
+        guard let pads, pads.count == 8 else {
             throw OnnxError.invalidInput(#function)
         }
 

@@ -100,7 +100,7 @@ extension MPSGraph {
             throw OnnxError.invalidInput(#function)
         }
 
-        if let pads = pads {
+        if let pads {
             guard let quad = pads.quad else {
                 throw OnnxError.invalidInput(#function)
             }

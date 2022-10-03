@@ -23,7 +23,7 @@ extension MPSGraph {
         scales: Quad<Float>?,
         linear: Bool
     ) throws -> MPSGraphTensor {
-        guard let scales = scales, scales.2 != 1, scales.3 != 1 else {
+        guard let scales, scales.2 != 1, scales.3 != 1 else {
             return input
         }
 

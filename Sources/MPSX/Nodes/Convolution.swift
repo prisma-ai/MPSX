@@ -82,7 +82,7 @@ extension MPSGraph {
                 weightsLayout: .OIHW
             ) else { throw OnnxError.invalidInput(#function) }
 
-            if let pads = pads {
+            if let pads {
                 guard let quad = pads.quad else {
                     throw OnnxError.invalidInput(#function)
                 }
@@ -118,7 +118,7 @@ extension MPSGraph {
                 weightsLayout: .OIHW
             ) else { throw OnnxError.invalidInput(#function) }
 
-            if let pads = pads {
+            if let pads {
                 guard let quad = pads.quad else {
                     throw OnnxError.invalidInput(#function)
                 }
@@ -141,7 +141,7 @@ extension MPSGraph {
 
         let output: MPSGraphTensor
 
-        if let bias = bias {
+        if let bias {
             output = addition(convolution, reshapeHW(bias), name: nil)
         } else {
             output = convolution
@@ -212,7 +212,7 @@ extension MPSGraph {
         let padY: Int
         let padX: Int
 
-        if let pads = pads {
+        if let pads {
             guard let quad = pads.quad else {
                 throw OnnxError.invalidInput(#function)
             }
@@ -250,7 +250,7 @@ extension MPSGraph {
 
         let output: MPSGraphTensor
 
-        if let bias = bias {
+        if let bias {
             output = addition(convolution, reshapeHW(bias), name: nil)
         } else {
             output = convolution
