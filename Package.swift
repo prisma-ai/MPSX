@@ -14,13 +14,17 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            name: "SwiftProtobuf",
             url: "https://github.com/apple/swift-protobuf.git",
             from: "1.20.1"
         ),
     ],
     targets: [
-        .target(name: "MPSX", dependencies: ["SwiftProtobuf"]),
+        .target(
+            name: "MPSX",
+            dependencies: [
+                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
+            ]
+        ),
         .testTarget(
             name: "MPSXTests",
             dependencies: ["MPSX"]
