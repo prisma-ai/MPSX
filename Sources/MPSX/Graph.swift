@@ -190,12 +190,18 @@ public final class OnnxGraph {
                     executionDescriptor: nil
                 )
             }
+
+            self.outputShapes = (executable.targetTensors ?? []).reduce(into: [:]) {
+                $0[$1.operation.name] = $1.shape
+            }
         } else {
             preconditionFailure("unsupported os/version")
         }
     }
 
     // MARK: Public
+
+    public let outputShapes: [String: [NSNumber]]
 
     public let inputShapes: [String: [NSNumber]]
 
