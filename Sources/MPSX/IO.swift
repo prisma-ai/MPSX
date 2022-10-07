@@ -218,4 +218,12 @@ public extension MPSNDArray {
     var floats: [Float] {
         arrayOfFloats()
     }
+
+    /// Exports undelying data to MTLBuffer
+    func buffer(
+        options: MTLResourceOptions,
+        commandBuffer: MTLCommandBuffer
+    ) -> MTLBuffer? {
+        exportToBuffer(options: options, commandBuffer: commandBuffer)
+    }
 }

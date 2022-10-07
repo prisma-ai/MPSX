@@ -86,6 +86,56 @@ extension MPSNDArray {
     }
 }
 
+extension MPSNDArray {
+    private func bufferOf<T: Numeric>(
+        _: T.Type,
+        options: MTLResourceOptions,
+        commandBuffer: MTLCommandBuffer
+    ) -> MTLBuffer? {
+        let stride = MemoryLayout<T>.stride
+
+        assert(stride == dataTypeSize)
+
+        let count = (0 ..< numberOfDimensions).reduce(1) {
+            $0 * length(ofDimension: $1)
+        }
+
+        guard let buffer = device.makeBuffer(length: count * stride, options: options) else {
+            return nil
+        }
+
+        exportData(
+            with: commandBuffer,
+            to: buffer,
+            destinationDataType: dataType,
+            offset: 0,
+            rowStrides: nil
+        )
+
+        return buffer
+    }
+
+    func exportToBuffer(
+        options: MTLResourceOptions,
+        commandBuffer: MTLCommandBuffer
+    ) -> MTLBuffer? {
+        switch dataType {
+        case .float32: return bufferOf(Float.self, options: options, commandBuffer: commandBuffer)
+        case .float16: return bufferOf(Float16.self, options: options, commandBuffer: commandBuffer)
+
+        case .int8: return bufferOf(Int8.self, options: options, commandBuffer: commandBuffer)
+        case .int16: return bufferOf(Int16.self, options: options, commandBuffer: commandBuffer)
+        case .int32: return bufferOf(Int32.self, options: options, commandBuffer: commandBuffer)
+
+        case .uInt8: return bufferOf(UInt8.self, options: options, commandBuffer: commandBuffer)
+        case .uInt16: return bufferOf(UInt16.self, options: options, commandBuffer: commandBuffer)
+        case .uInt32: return bufferOf(UInt32.self, options: options, commandBuffer: commandBuffer)
+
+        default: preconditionFailure("Unsupported data type: \(dataType)")
+        }
+    }
+}
+
 extension MPSDataType {
     var matchingImageChannelFormat: MPSImageFeatureChannelFormat {
         switch self {
