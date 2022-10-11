@@ -19,14 +19,10 @@ extension MPSGraph {
         else { throw OnnxError.invalidInput(node.name) }
 
         switch op {
-        case .add:
-            return addition(a, b, name: nil)
-        case .sub:
-            return subtraction(a, b, name: nil)
-        case .mul:
-            return multiplication(a, b, name: nil)
-        case .div:
-            return division(a, b, name: nil)
+        case .add: return a + b
+        case .sub: return a - b
+        case .mul: return a * b
+        case .div: return a / b
         }
     }
 }

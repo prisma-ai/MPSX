@@ -44,8 +44,8 @@ extension MPSGraph {
         let output = padTensor(
             input,
             with: (mode ?? .constant).mpsPaddingMode,
-            leftPadding: pads[0 ..< 4].map { NSNumber(value: $0) },
-            rightPadding: pads[4...].map { NSNumber(value: $0) },
+            leftPadding: pads[0 ..< 4].nsnumbers,
+            rightPadding: pads[4...].nsnumbers,
             constantValue: Double(value ?? 0),
             name: nil
         )

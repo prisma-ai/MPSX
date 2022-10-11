@@ -13,10 +13,10 @@ extension MPSGraph {
 
         let keepDims = (node.attr(i: "keepdims") ?? 1) > 0
 
-        var output = mean(of: input, axes: axes.map { NSNumber(value: $0) }, name: nil)
+        var output = mean(of: input, axes: axes.nsnumbers, name: nil)
 
         if !keepDims {
-            output = try squeeze(input: output, axes: [])
+            output = output.squeeze()
         }
 
         return output

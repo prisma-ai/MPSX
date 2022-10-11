@@ -118,16 +118,16 @@ extension MPSGraph {
 
         let s = c / g
 
-        let x = reshape(input, shape: [-1, g, s, h, w].map { NSNumber(value: $0) }, name: nil)
+        let x = input.reshape([-1, g, s, h, w].nsnumbers)
 
         let axes: [NSNumber] = [2, 3, 4]
 
         let mean = mean(of: x, axes: axes, name: nil)
         let variance = variance(of: x, mean: mean, axes: axes, name: nil)
 
-        let newShape = [1, g, s, 1, 1].map { NSNumber(value: $0) }
+        let newShape = [1, g, s, 1, 1].nsnumbers
 
-        var output = normalize(
+        let output = normalize(
             x,
             mean: mean,
             variance: variance,
@@ -137,12 +137,6 @@ extension MPSGraph {
             name: nil
         )
 
-        output = reshape(
-            output,
-            shape: input.shape!,
-            name: nil
-        )
-
-        return output
+        return output.reshape(input.shape!)
     }
 }
