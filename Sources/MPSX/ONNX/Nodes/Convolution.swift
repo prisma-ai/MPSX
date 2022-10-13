@@ -142,7 +142,7 @@ extension MPSGraph {
         let output: MPSGraphTensor
 
         if let bias {
-            output = addition(convolution, reshapeHW(bias), name: nil)
+            output = convolution + reshapeHW(bias)
         } else {
             output = convolution
         }
@@ -243,7 +243,7 @@ extension MPSGraph {
         let convolution = convolutionTranspose2D(
             input,
             weights: weights,
-            outputShape: outputShape.map { NSNumber(value: $0) },
+            outputShape: outputShape.nsnumbers,
             descriptor: descriptor,
             name: nil
         )
@@ -251,7 +251,7 @@ extension MPSGraph {
         let output: MPSGraphTensor
 
         if let bias {
-            output = addition(convolution, reshapeHW(bias), name: nil)
+            output = convolution + reshapeHW(bias)
         } else {
             output = convolution
         }

@@ -16,9 +16,9 @@ extension MPSGraph {
 
         let output = sliceTensor(
             input,
-            starts: starts.map { NSNumber(value: $0) },
-            ends: ends.map { NSNumber(value: $0) },
-            strides: .init(repeating: NSNumber(value: 1), count: starts.count),
+            starts: starts.nsnumbers,
+            ends: ends.nsnumbers,
+            strides: .init(repeating: 1, count: starts.count),
             name: nil
         )
 

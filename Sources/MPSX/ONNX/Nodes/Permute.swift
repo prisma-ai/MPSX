@@ -23,7 +23,7 @@ extension MPSGraph {
                 while true {
                     let k = perm[j]
 
-                    output = transposeTensor(output, dimension: j, withDimension: k, name: nil)
+                    output = output.transpose(j, k)
 
                     perm[j] = -1
 

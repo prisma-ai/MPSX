@@ -111,3 +111,29 @@ final class GPU {
         commandQueue.device
     }
 }
+
+func data(arg: Int) throws -> Data {
+    try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[arg]))
+}
+
+func inputTexture(arg: Int) async throws -> MTLTexture {
+    try await GPU.default.textureLoader.newTexture(
+        URL: .init(
+            fileURLWithPath: CommandLine.arguments[arg] // ⚠️⚠️⚠️ pass the input image path as a command line argument
+        ),
+        options: [.SRGB: false]
+    )
+}
+
+func save(texture: MTLTexture, arg: Int) throws {
+    let image = texture.cgImage(
+        colorSpace: CGColorSpace(name: CGColorSpace.displayP3)!
+    )
+
+    try image?.jpeg()?.write(
+        to: .init(
+            fileURLWithPath: CommandLine.arguments[arg] // ⚠️⚠️⚠️ pass the output image path as a command line argument
+        ),
+        options: .atomic
+    )
+}

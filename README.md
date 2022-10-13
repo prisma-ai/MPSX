@@ -55,7 +55,7 @@ let graph = try OnnxGraph(
 ``` swift
 let outputs: [MPSGraphTensorData] = graph.encode(
     to: <MPSCommandBuffer>,
-    inputsData: <[String : MPSGraphTensorData]> // String key is a model corresponding input name
+    inputs: <[String: MPSGraphTensorData]> // String key is a model corresponding input name
 )
 ```
 
@@ -64,11 +64,9 @@ This method requires manual data transformation from/to MPSGraphTensorData. For 
 #### texture conversion to MPSGraphTensorData
 
 ``` swift
-let input: MPSGraphTensorData = MPSGraphIO.input(
+let input: MPSGraphTensorData = .NCHW(
     texture: <MTLTexture>,
-    shape: model.inputs[0].shape.map { NSNumber(value: $0) },
-    dataType: graph.inputDataTypes[model.inputs[0].name]!,
-    scaler: <MPSImageScale>, // ex. MPSImageBilinearScale
+    tensor: <MPSGraphTensor>,
     in: <MPSCommandBuffer>
 )
 ```
@@ -76,10 +74,9 @@ let input: MPSGraphTensorData = MPSGraphIO.input(
 #### MPSGraphTensorData conversion to MPSTemporaryImage
 
 ``` swift
-let image: MPSTemporaryImage = MPSGraphIO.output(
-    data: <MPSGraphTensorData>,
-    in: <MPSCommandBuffer>
-)
+let image: MPSTemporaryImage = <MPSGraphTensorData>
+    .transposeNHWC(in: <MPSCommandBuffer>)
+    .temporaryImage(in: <MPSCommandBuffer>)
 ```
 
 #### raw floats from MPSGraphTensorData
@@ -100,11 +97,14 @@ For image-to-image neural networks MPSX provides convenient API:
 let texture: MTLTexture = graph.texture2DFrom(
     inputTextures: [model.inputs[0].name: <MTLTexture>],
     pixelFormat: .rgba8Unorm,
-    scaler: <MPSImageScale>, // ex. MPSImageBilinearScale
     converter: <MPSImageConversion>,
     in: <MPSCommandBuffer>
 )
 ```
+
+# MPSGraph DSL
+
+In addition to ONNX graphs, MPSX provides a convenient API for building [custom computational graphs](/Sources/MPSXTests/FoundationTests.swift#L16) similar to NumPy.
 
 # Links
 
@@ -124,7 +124,7 @@ Use SPM:
 
 ``` swift
 dependencies: [
-    .package(url: "https://github.com/prisma-ai/MPSX.git", .upToNextMajor(from: "1.0.0"))
+    .package(url: "https://github.com/prisma-ai/MPSX.git", .upToNextMajor(from: "1.3.0"))
 ]
 ```
 
