@@ -12,6 +12,17 @@ public final class MPSCompiledGraph {
             try body(graph)
         }
 
+        let compilationDescriptor = MPSGraphCompilationDescriptor()
+        if #available(iOS 15.4, macOS 12.3, *) {
+            compilationDescriptor.optimizationProfile = .performance
+            compilationDescriptor.optimizationLevel = .level1
+        }
+        #if os(iOS)
+        if #available(iOS 16.0, *) {
+            compilationDescriptor.waitForCompilationCompletion = true
+        }
+        #endif
+
         let executable = autoreleasepool {
             graph.compile(
                 with: .init(mtlDevice: device),
@@ -20,7 +31,7 @@ public final class MPSCompiledGraph {
                 },
                 targetTensors: outputTensors,
                 targetOperations: nil,
-                compilationDescriptor: nil
+                compilationDescriptor: compilationDescriptor
             )
         }
         executable.options = options
