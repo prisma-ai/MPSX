@@ -142,6 +142,12 @@ public extension MPSGraphTensor {
         }
         return y.operation.graph.negative(with: y, name: nil)
     }
+
+    @inlinable
+    @inline(__always)
+    static prefix func - (x: MPSGraphTensor) -> MPSGraphTensor {
+        x.operation.graph.negative(with: x, name: nil)
+    }
 }
 
 public extension MPSGraphTensor {
@@ -187,8 +193,134 @@ public extension MPSGraphTensor {
 public extension MPSGraphTensor {
     @inlinable
     @inline(__always)
+    static func == (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
+        x.operation.graph.equal(x, y, name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func == (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
+        x.operation.graph.equal(x, x.const(y), name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func == (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
+        y.operation.graph.equal(y.const(x), y, name: nil)
+    }
+}
+
+public extension MPSGraphTensor {
+    @inlinable
+    @inline(__always)
+    static func != (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
+        x.operation.graph.notEqual(x, y, name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func != (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
+        x.operation.graph.notEqual(x, x.const(y), name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func != (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
+        y.operation.graph.notEqual(y.const(x), y, name: nil)
+    }
+}
+
+public extension MPSGraphTensor {
+    @inlinable
+    @inline(__always)
+    static func < (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
+        x.operation.graph.lessThan(x, y, name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func < (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
+        x.operation.graph.lessThan(x, x.const(y), name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func < (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
+        y.operation.graph.lessThan(y.const(x), y, name: nil)
+    }
+}
+
+public extension MPSGraphTensor {
+    @inlinable
+    @inline(__always)
+    static func <= (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
+        x.operation.graph.lessThanOrEqualTo(x, y, name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func <= (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
+        x.operation.graph.lessThanOrEqualTo(x, x.const(y), name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func <= (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
+        y.operation.graph.lessThanOrEqualTo(y.const(x), y, name: nil)
+    }
+}
+
+public extension MPSGraphTensor {
+    @inlinable
+    @inline(__always)
+    static func > (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
+        x.operation.graph.greaterThan(x, y, name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func > (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
+        x.operation.graph.greaterThan(x, x.const(y), name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func > (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
+        y.operation.graph.greaterThan(y.const(x), y, name: nil)
+    }
+}
+
+public extension MPSGraphTensor {
+    @inlinable
+    @inline(__always)
+    static func >= (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
+        x.operation.graph.greaterThanOrEqualTo(x, y, name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func >= (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
+        x.operation.graph.greaterThanOrEqualTo(x, x.const(y), name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    static func >= (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
+        y.operation.graph.greaterThanOrEqualTo(y.const(x), y, name: nil)
+    }
+}
+
+public extension MPSGraphTensor {
+    @inlinable
+    @inline(__always)
     func sum(axes: [Int]) -> MPSGraphTensor {
         operation.graph.reductionSum(with: self, axes: axes.nsnumbers, name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    func product(axes: [Int]) -> MPSGraphTensor {
+        operation.graph.reductionProduct(with: self, axes: axes.nsnumbers, name: nil)
     }
 
     @inlinable
@@ -201,6 +333,12 @@ public extension MPSGraphTensor {
     @inline(__always)
     func max(axes: [Int]) -> MPSGraphTensor {
         operation.graph.reductionMaximum(with: self, axes: axes.nsnumbers, name: nil)
+    }
+
+    @inlinable
+    @inline(__always)
+    func mean(axes: [Int]) -> MPSGraphTensor {
+        operation.graph.mean(of: self, axes: axes.nsnumbers, name: nil)
     }
 }
 
@@ -237,8 +375,8 @@ public extension MPSGraphTensor {
 
     @inlinable
     @inline(__always)
-    func negative() -> MPSGraphTensor {
-        operation.graph.negative(with: self, name: nil)
+    func squareRoot() -> MPSGraphTensor {
+        operation.graph.squareRoot(with: self, name: nil)
     }
 
     @inlinable
