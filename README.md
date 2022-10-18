@@ -6,7 +6,7 @@
 
 ⚠️ It's metal based, so you should be familiar with Metal API (+ metal performance shaders).
 
-🔎 See [tests](/Sources/MPSXTests/Tests.swift) for realworld examples.
+🔎 See [tests](/Sources/MPSXTests/OnnxTests.swift) for realworld examples.
 
 To run your ONNX model with MPSX you need to perform several easy steps:
 
