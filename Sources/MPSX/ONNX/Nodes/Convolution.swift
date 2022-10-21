@@ -159,7 +159,6 @@ extension MPSGraph {
     ) throws -> MPSGraphTensor {
         guard let input = tensors(node.input(0)),
               let weights = tensors(node.input(1)),
-              let outputPadding = node.attr(ints: "output_padding"),
               ConvAutoPad.notSet(node.attr(s: "auto_pad"))
         else { throw OnnxError.invalidInput(node.name) }
 
@@ -171,7 +170,7 @@ extension MPSGraph {
             strides: node.attr(ints: "strides"),
             dilations: node.attr(ints: "dilations"),
             pads: node.attr(ints: "pads"),
-            outputPadding: outputPadding
+            outputPadding: node.attr(ints: "output_padding")
         )
     }
 
@@ -183,13 +182,13 @@ extension MPSGraph {
         strides: [Int]?,
         dilations: [Int]?,
         pads: [Int]?,
-        outputPadding: [Int]
+        outputPadding: [Int]?
     ) throws -> MPSGraphTensor {
         let groups = groups ?? 1
 
         guard let strides = (strides ?? [1, 1]).pair,
               let dilations = (dilations ?? [1, 1]).pair,
-              let outputPadding = outputPadding.pair,
+              let outputPadding = (outputPadding ?? [0, 0]).pair,
               let inputShape = input.quadShape,
               let weightsShape = weights.quadShape
         else {
