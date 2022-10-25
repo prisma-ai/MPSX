@@ -11,9 +11,15 @@ public final class OnnxGraph {
     public init(
         model: OnnxModel,
         device: MTLDevice,
-        config: OnnxGraphConfig
+        config: OnnxGraphConfig,
+        options: MPSGraphOptions = .none,
+        compilationDescriptor: MPSGraphCompilationDescriptor? = nil
     ) throws {
-        compiledGraph = try MPSCompiledGraph(device: device) { mpsGraph in
+        compiledGraph = try MPSCompiledGraph(
+            options: options,
+            compilationDescriptor: compilationDescriptor,
+            device: device
+        ) { mpsGraph in
             let onnxGraph = model.proto.graph
 
             let tensorsDataType: MPSDataType

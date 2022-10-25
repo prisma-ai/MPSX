@@ -4,7 +4,12 @@ import MetalPerformanceShadersGraph
 public final class MPSCompiledGraph {
     // MARK: Lifecycle
 
-    public init(options: MPSGraphOptions = .none, device: MTLDevice, body: (MPSGraph) throws -> [MPSGraphTensor]) rethrows {
+    public init(
+        options: MPSGraphOptions = .none,
+        compilationDescriptor: MPSGraphCompilationDescriptor? = nil,
+        device: MTLDevice,
+        body: (MPSGraph) throws -> [MPSGraphTensor]
+    ) rethrows {
         let graph = MPSGraph()
         graph.options = options
 
@@ -20,7 +25,7 @@ public final class MPSCompiledGraph {
                 },
                 targetTensors: outputTensors,
                 targetOperations: nil,
-                compilationDescriptor: nil
+                compilationDescriptor: compilationDescriptor
             )
         }
         executable.options = options
