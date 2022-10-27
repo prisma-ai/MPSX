@@ -60,7 +60,8 @@ extension MPSGraph {
         let groups = groups ?? 1
 
         guard let strides = (strides ?? [1, 1]).pair,
-              let dilations = (dilations ?? [1, 1]).pair
+              let dilations = (dilations ?? [1, 1]).pair,
+              let pads = (pads ?? [0, 0, 0, 0]).quad
         else {
             throw OnnxError.invalidInput(#function)
         }
@@ -73,27 +74,14 @@ extension MPSGraph {
                 strideInY: strides.0,
                 dilationRateInX: dilations.1,
                 dilationRateInY: dilations.0,
-                paddingLeft: 0,
-                paddingRight: 0,
-                paddingTop: 0,
-                paddingBottom: 0,
+                paddingLeft: pads.1,
+                paddingRight: pads.3,
+                paddingTop: pads.0,
+                paddingBottom: pads.2,
                 paddingStyle: .explicit,
                 dataLayout: .NCHW,
                 weightsLayout: .OIHW
             ) else { throw OnnxError.invalidInput(#function) }
-
-            if let pads {
-                guard let quad = pads.quad else {
-                    throw OnnxError.invalidInput(#function)
-                }
-
-                descriptor.setExplicitPaddingWithPaddingLeft(
-                    quad.1,
-                    paddingRight: quad.3,
-                    paddingTop: quad.0,
-                    paddingBottom: quad.2
-                )
-            }
 
             // https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
             // "When groups == in_channels and out_channels == K * in_channels, where K is a positive integer, this operation is also known as a “depthwise convolution”."
@@ -113,23 +101,14 @@ extension MPSGraph {
                 dilationRateInX: dilations.1,
                 dilationRateInY: dilations.0,
                 groups: groups,
+                paddingLeft: pads.1,
+                paddingRight: pads.3,
+                paddingTop: pads.0,
+                paddingBottom: pads.2,
                 paddingStyle: .explicit,
                 dataLayout: .NCHW,
                 weightsLayout: .OIHW
             ) else { throw OnnxError.invalidInput(#function) }
-
-            if let pads {
-                guard let quad = pads.quad else {
-                    throw OnnxError.invalidInput(#function)
-                }
-
-                descriptor.setExplicitPaddingWithPaddingLeft(
-                    quad.1,
-                    paddingRight: quad.3,
-                    paddingTop: quad.0,
-                    paddingBottom: quad.2
-                )
-            }
 
             convolution = convolution2D(
                 input,
@@ -139,13 +118,7 @@ extension MPSGraph {
             )
         }
 
-        let output: MPSGraphTensor
-
-        if let bias {
-            output = convolution + reshapeHW(bias)
-        } else {
-            output = convolution
-        }
+        let output = bias.flatMap { convolution + reshapeHW($0) } ?? convolution
 
         return output
     }
@@ -188,6 +161,7 @@ extension MPSGraph {
 
         guard let strides = (strides ?? [1, 1]).pair,
               let dilations = (dilations ?? [1, 1]).pair,
+              let pads = (pads ?? [0, 0, 0, 0]).quad,
               let outputPadding = (outputPadding ?? [0, 0]).pair,
               let inputShape = input.quadShape,
               let weightsShape = weights.quadShape
@@ -201,6 +175,10 @@ extension MPSGraph {
             dilationRateInX: dilations.1,
             dilationRateInY: dilations.0,
             groups: groups,
+            paddingLeft: pads.1,
+            paddingRight: pads.3,
+            paddingTop: pads.0,
+            paddingBottom: pads.2,
             paddingStyle: .explicit,
             dataLayout: .NCHW,
             weightsLayout: .OIHW
@@ -208,35 +186,13 @@ extension MPSGraph {
             throw OnnxError.invalidInput(#function)
         }
 
-        let padY: Int
-        let padX: Int
-
-        if let pads {
-            guard let quad = pads.quad else {
-                throw OnnxError.invalidInput(#function)
-            }
-
-            descriptor.setExplicitPaddingWithPaddingLeft(
-                quad.1,
-                paddingRight: quad.3,
-                paddingTop: quad.0,
-                paddingBottom: quad.2
-            )
-
-            padY = quad.0 + quad.2
-            padX = quad.1 + quad.3
-        } else {
-            padY = 0
-            padX = 0
-        }
-
         // output_shape[i] = stride[i] * (input_size[i] - 1) + output_padding[i] + ((kernel_shape[i] - 1) * dilations[i] + 1) - pads[start_i] - pads[end_i]
 
         let outputShape: [Int] = [
             inputShape.0, // N
             weightsShape.1 * groups, // C
-            strides.0 * (inputShape.2 - 1) + outputPadding.0 + ((weightsShape.2 - 1) * dilations.0 + 1) - padY, // H
-            strides.1 * (inputShape.3 - 1) + outputPadding.1 + ((weightsShape.3 - 1) * dilations.1 + 1) - padX, // W
+            strides.0 * (inputShape.2 - 1) + outputPadding.0 + ((weightsShape.2 - 1) * dilations.0 + 1) - pads.0 - pads.2, // H
+            strides.1 * (inputShape.3 - 1) + outputPadding.1 + ((weightsShape.3 - 1) * dilations.1 + 1) - pads.1 - pads.3, // W
         ]
 
         let convolution = convolutionTranspose2D(
@@ -247,13 +203,7 @@ extension MPSGraph {
             name: nil
         )
 
-        let output: MPSGraphTensor
-
-        if let bias {
-            output = convolution + reshapeHW(bias)
-        } else {
-            output = convolution
-        }
+        let output = bias.flatMap { convolution + reshapeHW($0) } ?? convolution
 
         return output
     }
