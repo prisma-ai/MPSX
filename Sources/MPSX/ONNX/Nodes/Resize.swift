@@ -8,40 +8,23 @@ extension MPSGraph {
         _ tensors: [String: MPSGraphTensor],
         _ constants: [String: Onnx_TensorProto]
     ) throws -> MPSGraphTensor {
-        guard let input = tensors(node.input(0))
+        guard let input = tensors(node.input(0)),
+              let shape = input.quadShape
         else { throw OnnxError.invalidInput(node.name) }
 
-        return try resize(
-            input: input,
-            scales: node.input.dropFirst().compactMap { constants[$0]?.floats?.quad }.first ?? node.attr(floats: "scales")?.quad,
-            linear: node.attr(s: "mode") == "linear"
-        )
-    }
+        let scales: Pair<Float> = (node.input.dropFirst().compactMap { constants[$0]?.floats?.quad }.first ?? node.attr(floats: "scales")?.quad).flatMap {
+            ($0.2, $0.3)
+        } ?? (1, 1)
 
-    func resize(
-        input: MPSGraphTensor,
-        scales: Quad<Float>?,
-        linear: Bool
-    ) throws -> MPSGraphTensor {
-        guard let scales, scales.2 != 1, scales.3 != 1 else {
+        guard scales.0 != 1 || scales.1 != 1 else {
             return input
         }
 
-        guard let shape = input.quadShape else {
-            throw OnnxError.invalidInput(#function)
-        }
-
-        return resize(
-            input,
-            size: [
-                NSNumber(value: (Float(shape.2) * scales.2).rounded(.down)),
-                NSNumber(value: (Float(shape.3) * scales.3).rounded(.down)),
-            ],
-            mode: linear ? .bilinear : .nearest,
-            centerResult: false,
-            alignCorners: true,
+        return input.resize(
+            mode: node.attr(s: "mode") == "linear" ? .bilinear : .nearest,
             layout: .NCHW,
-            name: nil
+            height: Int((Float(shape.2) * scales.0).rounded()),
+            width: Int((Float(shape.3) * scales.1).rounded())
         )
     }
 }
