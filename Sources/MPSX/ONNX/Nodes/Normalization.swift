@@ -19,15 +19,13 @@ extension MPSGraph {
             variance: reshapeHW(variance),
             gamma: reshapeHW(gamma),
             beta: reshapeHW(beta),
-            epsilon: 1e-05,
+            epsilon: node.attr(f: "epsilon") ?? 1e-05,
             name: nil
         )
 
         return output
     }
-}
 
-extension MPSGraph {
     /// https://github.com/onnx/onnx/blob/main/docs/Operators.md#InstanceNormalization
     func instanceNorm(
         _ node: Onnx_NodeProto,
@@ -38,18 +36,6 @@ extension MPSGraph {
               let beta = tensors(node.input(2))
         else { throw OnnxError.invalidInput(node.name) }
 
-        return instanceNorm(
-            input: input,
-            gamma: gamma,
-            beta: beta
-        )
-    }
-
-    func instanceNorm(
-        input: MPSGraphTensor,
-        gamma: MPSGraphTensor,
-        beta: MPSGraphTensor
-    ) -> MPSGraphTensor {
         let axes: [NSNumber] = [2, 3]
 
         let mean = mean(of: input, axes: axes, name: nil)
@@ -61,7 +47,7 @@ extension MPSGraph {
             variance: variance,
             gamma: reshapeHW(gamma),
             beta: reshapeHW(beta),
-            epsilon: 1e-05,
+            epsilon: node.attr(f: "epsilon") ?? 1e-05,
             name: nil
         )
 
