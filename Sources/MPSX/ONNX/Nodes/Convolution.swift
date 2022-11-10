@@ -28,6 +28,27 @@ extension MPSGraph {
               ConvAutoPad.notSet(node.attr(s: "auto_pad"))
         else { throw OnnxError.invalidInput(node.name) }
 
+        return try conv(
+            input: input,
+            weights: weights,
+            bias: tensors(node.input(2)),
+            groups: node.attr(i: "group"),
+            strides: node.attr(ints: "strides"),
+            dilations: node.attr(ints: "dilations"),
+            pads: node.attr(ints: "pads")
+        )
+    }
+
+    /// https://github.com/microsoft/onnxruntime/blob/main/docs/ContribOperators.md#com.microsoft.FusedConv
+    func fusedConv(
+        _ node: Onnx_NodeProto,
+        _ tensors: [String: MPSGraphTensor]
+    ) throws -> MPSGraphTensor {
+        guard let input = tensors(node.input(0)),
+              let weights = tensors(node.input(1)),
+              ConvAutoPad.notSet(node.attr(s: "auto_pad"))
+        else { throw OnnxError.invalidInput(node.name) }
+
         var output = try conv(
             input: input,
             weights: weights,
@@ -38,11 +59,14 @@ extension MPSGraph {
             pads: node.attr(ints: "pads")
         )
 
+        if let z = tensors(node.input(3)) {
+            output = output + z
+        }
+
         switch node.attr(s: "activation") {
-        case "Relu":
-            output = reLU(with: output, name: nil)
-        default:
-            break
+        case "Relu": output = reLU(with: output, name: nil)
+        case "": break
+        default: throw OnnxError.invalidInput(node.name)
         }
 
         return output

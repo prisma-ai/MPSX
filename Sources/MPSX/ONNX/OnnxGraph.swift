@@ -70,9 +70,10 @@ public final class OnnxGraph {
                     output = try mpsGraph.groupNorm(node, tensors, constants)
                 case "Concat":
                     output = try mpsGraph.concat(node, tensors)
-                case "Conv",
-                     "FusedConv":
+                case "Conv":
                     output = try mpsGraph.conv(node, tensors)
+                case "FusedConv":
+                    output = try mpsGraph.fusedConv(node, tensors)
                 case "ConvTranspose":
                     output = try mpsGraph.convTranspose(node, tensors)
                 case "Gemm",
