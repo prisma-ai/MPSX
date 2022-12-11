@@ -52,6 +52,43 @@ public extension MPSGraphTensor {
     func transpose(_ dim1: Int, _ dim2: Int) -> MPSGraphTensor {
         operation.graph.transposeTensor(self, dimension: dim1, withDimension: dim2, name: nil)
     }
+
+    func transpose(_ permutation: [Int]) -> MPSGraphTensor {
+        if #available(iOS 16.0, macOS 13.0, *) {
+            return operation.graph.transpose(self, permutation: permutation.nsnumbers, name: nil)
+        }
+
+        // https://github.com/pytorch/pytorch/blob/af3964a8725236c78ce969b827fdeee1c5c54110/torch/tensor.py#L200
+
+        var output = self
+        var permutation = permutation
+
+        for i in permutation.indices {
+            let p = permutation[i]
+
+            if p != i, p != -1 {
+                var j = i
+
+                while true {
+                    let k = permutation[j]
+
+                    output = output.transpose(j, k)
+
+                    permutation[j] = -1
+
+                    j = k
+
+                    if permutation[j] == i {
+                        break
+                    }
+                }
+
+                permutation[j] = -1
+            }
+        }
+
+        return output
+    }
 }
 
 public extension MPSGraphTensor {
