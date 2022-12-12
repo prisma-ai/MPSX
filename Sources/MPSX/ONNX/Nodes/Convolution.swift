@@ -21,7 +21,8 @@ extension MPSGraph {
     /// https://github.com/onnx/onnx/blob/main/docs/Operators.md#Conv
     func conv(
         _ node: Onnx_NodeProto,
-        _ tensors: [String: MPSGraphTensor]
+        _ tensors: [String: MPSGraphTensor],
+        swizzled: Bool
     ) throws -> MPSGraphTensor {
         guard let input = tensors(node.input(0)),
               let weights = tensors(node.input(1)),
@@ -35,14 +36,16 @@ extension MPSGraph {
             groups: node.attr(i: "group"),
             strides: node.attr(ints: "strides"),
             dilations: node.attr(ints: "dilations"),
-            pads: node.attr(ints: "pads")
+            pads: node.attr(ints: "pads"),
+            swizzled: swizzled
         )
     }
 
     /// https://github.com/microsoft/onnxruntime/blob/main/docs/ContribOperators.md#com.microsoft.FusedConv
     func fusedConv(
         _ node: Onnx_NodeProto,
-        _ tensors: [String: MPSGraphTensor]
+        _ tensors: [String: MPSGraphTensor],
+        swizzled: Bool
     ) throws -> MPSGraphTensor {
         guard let input = tensors(node.input(0)),
               let weights = tensors(node.input(1)),
@@ -56,7 +59,8 @@ extension MPSGraph {
             groups: node.attr(i: "group"),
             strides: node.attr(ints: "strides"),
             dilations: node.attr(ints: "dilations"),
-            pads: node.attr(ints: "pads")
+            pads: node.attr(ints: "pads"),
+            swizzled: swizzled
         )
 
         if let z = tensors(node.input(3)) {
@@ -79,7 +83,8 @@ extension MPSGraph {
         groups: Int?,
         strides: [Int]?,
         dilations: [Int]?,
-        pads: [Int]?
+        pads: [Int]?,
+        swizzled: Bool
     ) throws -> MPSGraphTensor {
         let groups = groups ?? 1
 
@@ -92,7 +97,10 @@ extension MPSGraph {
 
         let convolution: MPSGraphTensor
 
-        if groups != 1, groups == weights.shape?[0].intValue {
+        // https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
+        // "When groups == in_channels and out_channels == K * in_channels, where K is a positive integer, this operation is also known as a “depthwise convolution”."
+
+        if groups != 1, groups == weights.shape?[swizzled ? 1 : 0].intValue {
             guard let descriptor = MPSGraphDepthwiseConvolution2DOpDescriptor(
                 strideInX: strides.1,
                 strideInY: strides.0,
@@ -107,14 +115,12 @@ extension MPSGraph {
                 weightsLayout: .OIHW
             ) else { throw OnnxError.invalidInput(#function) }
 
-            // https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
-            // "When groups == in_channels and out_channels == K * in_channels, where K is a positive integer, this operation is also known as a “depthwise convolution”."
             // weightsLayout == OIHW, but MPSGraphDepthwiseConvolution2DOpDescriptor declares 'O' index is channel multiplier index (see headers), so we need to transpose weights tensor
             // Maybe i'm wrong, but it works ¯\_(ツ)_/¯
 
             convolution = depthwiseConvolution2D(
                 input,
-                weights: transposeTensor(weights, dimension: 0, withDimension: 1, name: nil),
+                weights: swizzled ? weights : weights.transpose(0, 1),
                 descriptor: descriptor,
                 name: nil
             )

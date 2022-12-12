@@ -48,6 +48,8 @@ public final class OnnxGraph {
                 )
             }
 
+            let swizzled = model.proto.producerName == "MPSX"
+
             var constants: [String: Onnx_TensorProto] = model.initializer
 
             for node in onnxGraph.node {
@@ -71,9 +73,9 @@ public final class OnnxGraph {
                 case "Concat":
                     output = try mpsGraph.concat(node, tensors)
                 case "Conv":
-                    output = try mpsGraph.conv(node, tensors)
+                    output = try mpsGraph.conv(node, tensors, swizzled: swizzled)
                 case "FusedConv":
-                    output = try mpsGraph.fusedConv(node, tensors)
+                    output = try mpsGraph.fusedConv(node, tensors, swizzled: swizzled)
                 case "ConvTranspose":
                     output = try mpsGraph.convTranspose(node, tensors)
                 case "Gemm",

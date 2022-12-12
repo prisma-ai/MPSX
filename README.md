@@ -110,6 +110,18 @@ In addition to ONNX graphs, MPSX provides a convenient API for building [custom 
 
 [MPSCommandBuffer explanation](https://geor.blog/mpscommandbuffer/)
 
+# Optimizations
+
+1) Use [ONNX simplifier](https://github.com/daquexian/onnx-simplifier)
+2) Use [ONNX2MPSX.py](ONNX2MPSX.py) script for weights conversion (FP 16/32) and specific MPSGraph optimizations.
+
+``` console
+for f in $(find $1 -name "*.onnx"); do
+    onnxsim $f $f
+    python ONNX2MPSX.py --half --input $f --output $f
+done;
+```
+
 # Limitations
 
 MPSX...
