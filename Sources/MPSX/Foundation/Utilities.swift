@@ -305,14 +305,17 @@ private extension MPSImage {
 }
 
 public extension MPSGraphTensorData {
-    static func NHWC(
+    static func from(
         image: MPSImage,
         tensorShape: [Int],
         tensorDataType: MPSDataType,
         resizeMode: MPSGraphResizeMode = .bilinear,
+        channelsFirst: Bool,
         in commandBuffer: MPSCommandBuffer
     ) -> MPSGraphTensorData {
-        precondition(tensorShape.count == 4 && tensorShape[0] == 1 && image.featureChannels == tensorShape[3])
+        let (c, h, w) = channelsFirst ? (tensorShape[1], tensorShape[2], tensorShape[3]) : (tensorShape[3], tensorShape[1], tensorShape[2])
+
+        precondition(tensorShape.count == 4 && tensorShape[0] == 1 && image.featureChannels == c)
 
         let data = autoreleasepool {
             image.tensorData(dataType: tensorDataType, in: commandBuffer)
@@ -322,40 +325,16 @@ public extension MPSGraphTensorData {
 
         var transformers: [(MPSGraphTensor) -> MPSGraphTensor] = []
 
-        if dataShape[1] != tensorShape[1] || dataShape[2] != tensorShape[2] {
+        if dataShape[1] != h || dataShape[2] != w {
             transformers.append {
-                $0.resize(mode: resizeMode, layout: .NHWC, height: tensorShape[1], width: tensorShape[2])
+                $0.resize(mode: resizeMode, layout: .NHWC, height: h, width: w)
             }
         }
 
-        return data.transform(in: commandBuffer, transformers)
-    }
-
-    static func NCHW(
-        image: MPSImage,
-        tensorShape: [Int],
-        tensorDataType: MPSDataType,
-        resizeMode: MPSGraphResizeMode = .bilinear,
-        in commandBuffer: MPSCommandBuffer
-    ) -> MPSGraphTensorData {
-        precondition(tensorShape.count == 4 && tensorShape[0] == 1 && image.featureChannels == tensorShape[1])
-
-        let data = autoreleasepool {
-            image.tensorData(dataType: tensorDataType, in: commandBuffer)
-        }
-
-        let dataShape = data.shape.map(\.intValue)
-
-        var transformers: [(MPSGraphTensor) -> MPSGraphTensor] = []
-
-        if dataShape[1] != tensorShape[2] || dataShape[2] != tensorShape[3] {
+        if channelsFirst {
             transformers.append {
-                $0.resize(mode: resizeMode, layout: .NHWC, height: tensorShape[2], width: tensorShape[3])
+                $0.transpose(2, 3).transpose(1, 2)
             }
-        }
-
-        transformers.append {
-            $0.transpose(2, 3).transpose(1, 2)
         }
 
         return data.transform(in: commandBuffer, transformers)
@@ -371,11 +350,12 @@ public extension MPSGraphTensorData {
         resizeMode: MPSGraphResizeMode = .bilinear,
         in commandBuffer: MPSCommandBuffer
     ) -> MPSGraphTensorData {
-        NHWC(
+        from(
             image: .init(texture: texture, featureChannels: tensorShape[3]),
             tensorShape: tensorShape,
             tensorDataType: tensorDataType,
             resizeMode: resizeMode,
+            channelsFirst: false,
             in: commandBuffer
         )
     }
@@ -388,11 +368,12 @@ public extension MPSGraphTensorData {
         resizeMode: MPSGraphResizeMode = .bilinear,
         in commandBuffer: MPSCommandBuffer
     ) -> MPSGraphTensorData {
-        NCHW(
+        from(
             image: .init(texture: texture, featureChannels: tensorShape[1]),
             tensorShape: tensorShape,
             tensorDataType: tensorDataType,
             resizeMode: resizeMode,
+            channelsFirst: true,
             in: commandBuffer
         )
     }
@@ -422,38 +403,6 @@ public extension MPSGraphTensorData {
     ) -> MPSGraphTensorData {
         NCHW(
             texture: texture,
-            tensorShape: (tensor.shape ?? []).map(\.intValue),
-            tensorDataType: tensor.dataType,
-            resizeMode: resizeMode,
-            in: commandBuffer
-        )
-    }
-
-    @_transparent
-    static func NHWC(
-        image: MPSImage,
-        tensor: MPSGraphTensor,
-        resizeMode: MPSGraphResizeMode = .bilinear,
-        in commandBuffer: MPSCommandBuffer
-    ) -> MPSGraphTensorData {
-        NHWC(
-            image: image,
-            tensorShape: (tensor.shape ?? []).map(\.intValue),
-            tensorDataType: tensor.dataType,
-            resizeMode: resizeMode,
-            in: commandBuffer
-        )
-    }
-
-    @_transparent
-    static func NCHW(
-        image: MPSImage,
-        tensor: MPSGraphTensor,
-        resizeMode: MPSGraphResizeMode = .bilinear,
-        in commandBuffer: MPSCommandBuffer
-    ) -> MPSGraphTensorData {
-        NCHW(
-            image: image,
             tensorShape: (tensor.shape ?? []).map(\.intValue),
             tensorDataType: tensor.dataType,
             resizeMode: resizeMode,
