@@ -34,6 +34,7 @@ extension Array {
 }
 
 extension Array {
+    @usableFromInline
     var rawData: Data {
         withUnsafeBufferPointer {
             Data(buffer: $0)
@@ -180,16 +181,12 @@ public extension MPSGraphExecutable {
         }
     }
 
-    @inlinable
-    @inline(__always)
     func encode(to commandBuffer: MPSCommandBuffer, inputs: [MPSGraphTensorData]) -> [MPSGraphTensorData] {
         autoreleasepool {
             encode(to: commandBuffer, inputs: inputs, results: nil, executionDescriptor: nil)
         }
     }
 
-    @inlinable
-    @inline(__always)
     func encode(to commandBuffer: MPSCommandBuffer, inputs: [String: MPSGraphTensorData]) -> [MPSGraphTensorData] {
         autoreleasepool {
             encode(to: commandBuffer, inputs: (feedTensors ?? []).compactMap {
@@ -363,7 +360,10 @@ public extension MPSGraphTensorData {
 
         return data.transform(in: commandBuffer, transformers)
     }
+}
 
+public extension MPSGraphTensorData {
+    @_transparent
     static func NHWC(
         texture: MTLTexture,
         tensorShape: [Int],
@@ -380,6 +380,7 @@ public extension MPSGraphTensorData {
         )
     }
 
+    @_transparent
     static func NCHW(
         texture: MTLTexture,
         tensorShape: [Int],
@@ -396,8 +397,7 @@ public extension MPSGraphTensorData {
         )
     }
 
-    @inlinable
-    @inline(__always)
+    @_transparent
     static func NHWC(
         texture: MTLTexture,
         tensor: MPSGraphTensor,
@@ -413,8 +413,7 @@ public extension MPSGraphTensorData {
         )
     }
 
-    @inlinable
-    @inline(__always)
+    @_transparent
     static func NCHW(
         texture: MTLTexture,
         tensor: MPSGraphTensor,
@@ -430,8 +429,7 @@ public extension MPSGraphTensorData {
         )
     }
 
-    @inlinable
-    @inline(__always)
+    @_transparent
     static func NHWC(
         image: MPSImage,
         tensor: MPSGraphTensor,
@@ -447,8 +445,7 @@ public extension MPSGraphTensorData {
         )
     }
 
-    @inlinable
-    @inline(__always)
+    @_transparent
     static func NCHW(
         image: MPSImage,
         tensor: MPSGraphTensor,

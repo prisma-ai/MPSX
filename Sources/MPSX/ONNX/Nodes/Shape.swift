@@ -10,6 +10,6 @@ extension MPSGraph {
               node.attribute.isEmpty
         else { throw OnnxError.invalidInput(node.name) }
 
-        return input.tshape().cast(to: input.dataType)
+        return input.shapeTensor.cast(to: input.dataType)
     }
 }
