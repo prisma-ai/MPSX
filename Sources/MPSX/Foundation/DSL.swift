@@ -2,14 +2,16 @@ import MetalPerformanceShadersGraph
 
 public extension MPSGraph {
     @_transparent
-    func const(_ vector: [Float]) -> MPSGraphTensor {
-        constant(vector.rawData, shape: [vector.count].nsnumbers, dataType: .float32)
+    func const(_ vector: [Float], shape: [Int]? = nil) -> MPSGraphTensor {
+        constant(vector.rawData, shape: (shape ?? [vector.count]).nsnumbers, dataType: .float32)
     }
 
+    #if !((os(macOS) || targetEnvironment(macCatalyst)) && arch(x86_64))
     @_transparent
-    func const(_ vector: [Float], shape: [Int]) -> MPSGraphTensor {
-        constant(vector.rawData, shape: shape.nsnumbers, dataType: .float32)
+    func const(_ vector: [Swift.Float16], shape: [Int]? = nil) -> MPSGraphTensor {
+        constant(vector.rawData, shape: (shape ?? [vector.count]).nsnumbers, dataType: .float16)
     }
+    #endif
 }
 
 public extension MPSGraphTensor {
@@ -22,7 +24,7 @@ public extension MPSGraphTensor {
 public extension MPSGraphTensor {
     @_transparent
     func cast(to dataType: MPSDataType) -> MPSGraphTensor {
-        operation.graph.cast(self, to: dataType, name: UUID().uuidString)
+        dataType != self.dataType ? operation.graph.cast(self, to: dataType, name: UUID().uuidString) : self
     }
 
     @_transparent
@@ -42,7 +44,7 @@ public extension MPSGraphTensor {
 
     @_transparent
     func transpose(_ dim1: Int, _ dim2: Int) -> MPSGraphTensor {
-        operation.graph.transposeTensor(self, dimension: dim1, withDimension: dim2, name: nil)
+        dim1 != dim2 ? operation.graph.transposeTensor(self, dimension: dim1, withDimension: dim2, name: nil) : self
     }
 }
 
