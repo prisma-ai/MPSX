@@ -3,25 +3,23 @@ from onnx import numpy_helper
 import numpy as np
 import argparse
 
-DATA_TYPES = {np.float32: 1, np.float16: 10}
 
-
-def convert_tensor_infos_to_types(tensor_infos, data_type):
+def _fp32_to_fp16_info(tensor_infos):
     return [
         onnx.helper.make_tensor_value_info(
             ti.name,
-            DATA_TYPES[data_type],
+            10,
             [dim.dim_value for dim in ti.type.tensor_type.shape.dim]
-        ) for ti in tensor_infos
+        ) if ti.type.tensor_type.elem_type == 1 else ti for ti in tensor_infos
     ]
 
 
-def convert_tensors_to_type(tensors, data_type):
+def _fp32_to_fp16(tensors):
     return [
         numpy_helper.from_array(
-            numpy_helper.to_array(t).astype(data_type),
+            numpy_helper.to_array(t).astype(np.float16),
             name=t.name
-        ) for t in tensors
+        ) if t.data_type == 1 else t for t in tensors
     ]
 
 
@@ -44,7 +42,7 @@ def transpose_depthwise_conv_weights(tensors, names):
     ]
 
 
-def convert_onnx_to_mpsx(model, data_type):
+def convert_onnx_to_mpsx(model, halfs):
     swizzle_candidates = find_tensors_for_transposition(model.graph.node)
     swizzled_initializer = transpose_depthwise_conv_weights(
         model.graph.initializer, swizzle_candidates)
@@ -52,11 +50,12 @@ def convert_onnx_to_mpsx(model, data_type):
         onnx.helper.make_graph(
             nodes=model.graph.node,
             name=model.graph.name,
-            inputs=convert_tensor_infos_to_types(model.graph.input, data_type),
-            outputs=convert_tensor_infos_to_types(
-                model.graph.output, data_type),
-            initializer=convert_tensors_to_type(
-                swizzled_initializer, data_type)
+            inputs=_fp32_to_fp16_info(
+                model.graph.input) if halfs else model.graph.input,
+            outputs=_fp32_to_fp16_info(
+                model.graph.output) if halfs else model.graph.output,
+            initializer=_fp32_to_fp16(
+                swizzled_initializer) if halfs else swizzled_initializer
         ),
         producer_name='MPSX'
     )
@@ -78,8 +77,7 @@ def main():
         return
 
     onnx.helper.strip_doc_string(onnx_model)
-    data_type = np.float16 if args.half else np.float32
-    mpsx_model = convert_onnx_to_mpsx(onnx_model, data_type)
+    mpsx_model = convert_onnx_to_mpsx(onnx_model, args.half)
     onnx.save(mpsx_model, args.output)
 
     print('Done!')
