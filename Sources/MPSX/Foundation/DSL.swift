@@ -81,7 +81,7 @@ public extension MPSGraphTensor {
     }
 
     func transpose(_ permutation: [Int]) -> MPSGraphTensor {
-        if #available(iOS 16.0, macOS 13.0, *) {
+        if #available(iOS 16.1, macOS 13.1, *) {
             return operation.graph.transpose(self, permutation: permutation.nsnumbers, name: nil)
         }
 
