@@ -1,13 +1,13 @@
 import MetalPerformanceShadersGraph
 
 public extension MPSGraph {
-    @_transparent
+    @inlinable
     func const(_ vector: [Float], shape: [Int]? = nil) -> MPSGraphTensor {
         constant(vector.rawData, shape: (shape ?? [vector.count]).nsnumbers, dataType: .float32)
     }
 
     #if !((os(macOS) || targetEnvironment(macCatalyst)) && arch(x86_64))
-    @_transparent
+    @inlinable
     func const(_ vector: [Swift.Float16], shape: [Int]? = nil) -> MPSGraphTensor {
         constant(vector.rawData, shape: (shape ?? [vector.count]).nsnumbers, dataType: .float16)
     }
@@ -15,34 +15,34 @@ public extension MPSGraph {
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     func const(_ scalar: Float) -> MPSGraphTensor {
         operation.graph.constant(Double(scalar), dataType: dataType)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     func cast(to dataType: MPSDataType) -> MPSGraphTensor {
         dataType != self.dataType ? operation.graph.cast(self, to: dataType, name: UUID().uuidString) : self
     }
 
-    @_transparent
+    @inlinable
     var shapeTensor: MPSGraphTensor {
         operation.graph.shapeOf(self, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func reshape(_ shape: [NSNumber]) -> MPSGraphTensor {
         operation.graph.reshape(self, shape: shape, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func reshape(_ shapeTensor: MPSGraphTensor) -> MPSGraphTensor {
         operation.graph.reshape(self, shapeTensor: shapeTensor, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func transpose(_ dim1: Int, _ dim2: Int) -> MPSGraphTensor {
         dim1 != dim2 ? operation.graph.transposeTensor(self, dimension: dim1, withDimension: dim2, name: nil) : self
     }
@@ -119,46 +119,46 @@ public extension MPSGraphTensor {
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     func pow(_ x: MPSGraphTensor) -> MPSGraphTensor {
         operation.graph.power(self, x, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func pow(_ x: Float) -> MPSGraphTensor {
         operation.graph.power(self, const(x), name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     static func + (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.addition(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func + (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
         y != 0 ? x.operation.graph.addition(x, x.const(y), name: nil) : x
     }
 
-    @_transparent
+    @inlinable
     static func + (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
         x != 0 ? y.operation.graph.addition(y.const(x), y, name: nil) : y
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     static func - (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.subtraction(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func - (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
         y != 0 ? x.operation.graph.subtraction(x, x.const(y), name: nil) : x
     }
 
-    @_transparent
+    @inlinable
     static func - (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
         if x != 0 {
             return y.operation.graph.subtraction(y.const(x), y, name: nil)
@@ -166,224 +166,224 @@ public extension MPSGraphTensor {
         return y.operation.graph.negative(with: y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static prefix func - (x: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.negative(with: x, name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     static func * (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.multiplication(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func * (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
         y != 1 ? x.operation.graph.multiplication(x, x.const(y), name: nil) : x
     }
 
-    @_transparent
+    @inlinable
     static func * (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
         x != 1 ? y.operation.graph.multiplication(y.const(x), y, name: nil) : y
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     static func / (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.division(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func / (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
         y != 1 ? x.operation.graph.division(x, x.const(y), name: nil) : x
     }
 
-    @_transparent
+    @inlinable
     static func / (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
         y.operation.graph.division(y.const(x), y, name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     static func == (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.equal(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func == (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
         x.operation.graph.equal(x, x.const(y), name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func == (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
         y.operation.graph.equal(y.const(x), y, name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     static func != (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.notEqual(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func != (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
         x.operation.graph.notEqual(x, x.const(y), name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func != (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
         y.operation.graph.notEqual(y.const(x), y, name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     static func < (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.lessThan(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func < (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
         x.operation.graph.lessThan(x, x.const(y), name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func < (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
         y.operation.graph.lessThan(y.const(x), y, name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     static func <= (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.lessThanOrEqualTo(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func <= (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
         x.operation.graph.lessThanOrEqualTo(x, x.const(y), name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func <= (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
         y.operation.graph.lessThanOrEqualTo(y.const(x), y, name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     static func > (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.greaterThan(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func > (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
         x.operation.graph.greaterThan(x, x.const(y), name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func > (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
         y.operation.graph.greaterThan(y.const(x), y, name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     static func >= (x: MPSGraphTensor, y: MPSGraphTensor) -> MPSGraphTensor {
         x.operation.graph.greaterThanOrEqualTo(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func >= (x: MPSGraphTensor, y: Float) -> MPSGraphTensor {
         x.operation.graph.greaterThanOrEqualTo(x, x.const(y), name: nil)
     }
 
-    @_transparent
+    @inlinable
     static func >= (x: Float, y: MPSGraphTensor) -> MPSGraphTensor {
         y.operation.graph.greaterThanOrEqualTo(y.const(x), y, name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     func sum(axes: [Int]) -> MPSGraphTensor {
         operation.graph.reductionSum(with: self, axes: axes.nsnumbers, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func product(axes: [Int]) -> MPSGraphTensor {
         operation.graph.reductionProduct(with: self, axes: axes.nsnumbers, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func min(axes: [Int]) -> MPSGraphTensor {
         operation.graph.reductionMinimum(with: self, axes: axes.nsnumbers, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func max(axes: [Int]) -> MPSGraphTensor {
         operation.graph.reductionMaximum(with: self, axes: axes.nsnumbers, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func mean(axes: [Int]) -> MPSGraphTensor {
         operation.graph.mean(of: self, axes: axes.nsnumbers, name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     func clamp(min: Float, max: Float) -> MPSGraphTensor {
         operation.graph.clamp(self, min: const(min), max: const(max), name: nil)
     }
 
-    @_transparent
+    @inlinable
     func clamp(min: Float, max: MPSGraphTensor) -> MPSGraphTensor {
         operation.graph.clamp(self, min: const(min), max: max, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func clamp(min: MPSGraphTensor, max: Float) -> MPSGraphTensor {
         operation.graph.clamp(self, min: min, max: const(max), name: nil)
     }
 
-    @_transparent
+    @inlinable
     func clamp(min: MPSGraphTensor, max: MPSGraphTensor) -> MPSGraphTensor {
         operation.graph.clamp(self, min: min, max: max, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func abs() -> MPSGraphTensor {
         operation.graph.absolute(with: self, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func squareRoot() -> MPSGraphTensor {
         operation.graph.squareRoot(with: self, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func ceil() -> MPSGraphTensor {
         operation.graph.ceil(with: self, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func floor() -> MPSGraphTensor {
         operation.graph.floor(with: self, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func round() -> MPSGraphTensor {
         operation.graph.round(with: self, name: nil)
     }
 }
 
 public extension MPSGraphTensor {
-    @_transparent
+    @inlinable
     func resize(
         mode: MPSGraphResizeMode,
         layout: MPSGraphTensorNamedDataLayout,
@@ -403,7 +403,7 @@ public extension MPSGraphTensor {
 }
 
 public extension MPSGraph {
-    @_transparent
+    @inlinable
     func imagePlaceholder(
         dataType: MPSDataType,
         channels: Int,
@@ -414,7 +414,7 @@ public extension MPSGraph {
         placeholder(shape: [1, channels, height, width].nsnumbers, dataType: dataType, name: name)
     }
 
-    @_transparent
+    @inlinable
     func imagePlaceholder(
         dataType: MPSDataType,
         height: Int,
@@ -427,41 +427,41 @@ public extension MPSGraph {
 }
 
 public extension MPSGraph {
-    @_transparent
+    @inlinable
     func min(_ x: MPSGraphTensor, _ y: MPSGraphTensor) -> MPSGraphTensor {
         minimum(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func min(_ x: MPSGraphTensor, _ y: Float) -> MPSGraphTensor {
         minimum(x, x.const(y), name: nil)
     }
 
-    @_transparent
+    @inlinable
     func min(_ x: Float, _ y: MPSGraphTensor) -> MPSGraphTensor {
         minimum(y.const(x), y, name: nil)
     }
 }
 
 public extension MPSGraph {
-    @_transparent
+    @inlinable
     func max(_ x: MPSGraphTensor, _ y: MPSGraphTensor) -> MPSGraphTensor {
         maximum(x, y, name: nil)
     }
 
-    @_transparent
+    @inlinable
     func max(_ x: MPSGraphTensor, _ y: Float) -> MPSGraphTensor {
         maximum(x, x.const(y), name: nil)
     }
 
-    @_transparent
+    @inlinable
     func max(_ x: Float, _ y: MPSGraphTensor) -> MPSGraphTensor {
         maximum(y.const(x), y, name: nil)
     }
 }
 
 public extension MPSGraph {
-    @_transparent
+    @inlinable
     func matmul(_ x: MPSGraphTensor, _ y: MPSGraphTensor) -> MPSGraphTensor {
         matrixMultiplication(primary: x, secondary: y, name: nil)
     }

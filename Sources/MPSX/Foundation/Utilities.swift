@@ -342,7 +342,7 @@ public extension MPSGraphTensorData {
 }
 
 public extension MPSGraphTensorData {
-    @_transparent
+    @inlinable
     static func NHWC(
         texture: MTLTexture,
         tensorShape: [Int],
@@ -360,7 +360,7 @@ public extension MPSGraphTensorData {
         )
     }
 
-    @_transparent
+    @inlinable
     static func NCHW(
         texture: MTLTexture,
         tensorShape: [Int],
@@ -378,7 +378,7 @@ public extension MPSGraphTensorData {
         )
     }
 
-    @_transparent
+    @inlinable
     static func NHWC(
         texture: MTLTexture,
         tensor: MPSGraphTensor,
@@ -394,7 +394,7 @@ public extension MPSGraphTensorData {
         )
     }
 
-    @_transparent
+    @inlinable
     static func NCHW(
         texture: MTLTexture,
         tensor: MPSGraphTensor,
