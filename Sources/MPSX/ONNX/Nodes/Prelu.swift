@@ -7,10 +7,17 @@ extension MPSGraph {
         _ tensors: [String: MPSGraphTensor],
         _ constants: [String: Onnx_TensorProto]
     ) throws -> MPSGraphTensor {
-        guard let x = tensors(node.input(0)),
-              let alpha = constants(node.input(1))?.floats?.first
+        guard let x = tensors(node.input(0))
         else { throw OnnxError.invalidInput(node.name) }
 
-        return leakyReLU(with: x, alpha: Double(alpha), name: nil)
+        if let alpha = tensors(node.input(1)) {
+            return leakyReLU(with: x, alphaTensor: alpha, name: nil)
+        }
+
+        if let alpha = constants(node.input(1))?.floats?.first {
+            return leakyReLU(with: x, alpha: Double(alpha), name: nil)
+        }
+
+        throw OnnxError.invalidInput(node.name)
     }
 }
