@@ -194,7 +194,7 @@ public extension OnnxGraph {
                 )
             },
             in: commandBuffer
-        ).transposeNHWC(in: commandBuffer).temporaryImage(in: commandBuffer)
+        ).nhwc(in: commandBuffer).temporaryImage(in: commandBuffer)
     }
 
     func texture2DFrom(
@@ -212,6 +212,6 @@ public extension OnnxGraph {
                 )
             },
             in: commandBuffer
-        ).transposeNHWC(in: commandBuffer).texture2D(pixelFormat: pixelFormat, converter: converter, in: commandBuffer)
+        ).nhwc(in: commandBuffer).texture2D(pixelFormat: pixelFormat, converter: converter, in: commandBuffer)
     }
 }

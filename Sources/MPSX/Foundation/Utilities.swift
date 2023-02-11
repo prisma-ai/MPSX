@@ -194,9 +194,9 @@ public extension MPSGraphTensorData {
         )
     }
 
-    func transposeNHWC(in commandBuffer: MPSCommandBuffer) -> MPSGraphTensorData {
+    func nhwc(in commandBuffer: MPSCommandBuffer) -> MPSGraphTensorData {
         transform(in: commandBuffer, [
-            { $0.transpose(1, 2).transpose(2, 3) },
+            { $0.transpose([0, 2, 3, 1]) },
         ])
     }
 
@@ -311,7 +311,7 @@ public extension MPSGraphTensorData {
 
         if channelsFirst {
             transformers.append {
-                $0.transpose(2, 3).transpose(1, 2)
+                $0.transpose([0, 3, 1, 2])
             }
         }
 

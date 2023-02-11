@@ -51,9 +51,9 @@ final class OnnxTests: XCTestCase {
 
         // STEP 4️⃣: measure and run
 
-        func predict() -> MPSNDArray {
+        func predict() -> MPSGraphTensorData {
             gpu.commandQueue.sync {
-                graph.executable(input, in: $0).synchronizedNDArray(in: $0)
+                graph.executable(input, in: $0)
             }
         }
 
@@ -61,7 +61,13 @@ final class OnnxTests: XCTestCase {
             _ = predict()
         }
 
-        predict().floats.enumerated().sorted(by: { $0.element > $1.element }).prefix(3).forEach {
+        let rawData = predict()
+
+        let ndarray = gpu.commandQueue.sync {
+            rawData.synchronizedNDArray(in: $0)
+        }
+
+        ndarray.floats.enumerated().sorted(by: { $0.element > $1.element }).prefix(3).forEach {
             print(labels[$0.offset])
         }
     }
@@ -107,13 +113,9 @@ final class OnnxTests: XCTestCase {
 
         // STEP 4️⃣: measure and run
 
-        func styleTransfer() -> MTLTexture {
+        func styleTransfer() -> MPSGraphTensorData {
             gpu.commandQueue.sync {
-                graph.executable(input, in: $0).transposeNHWC(in: $0).texture2D(
-                    pixelFormat: .rgba8Unorm,
-                    converter: gpu.imageConverter,
-                    in: $0
-                )
+                graph.executable(input, in: $0)
             }
         }
 
@@ -121,6 +123,16 @@ final class OnnxTests: XCTestCase {
             _ = styleTransfer()
         }
 
-        try save(texture: styleTransfer(), arg: 3)
+        let rawData = styleTransfer()
+
+        let textureToSave = gpu.commandQueue.sync {
+            rawData.nhwc(in: $0).texture2D(
+                pixelFormat: .rgba8Unorm,
+                converter: gpu.imageConverter,
+                in: $0
+            )
+        }
+
+        try save(texture: textureToSave, arg: 3)
     }
 }
