@@ -174,44 +174,22 @@ private extension MPSDataType {
     }
 }
 
-public extension MPSGraphExecutable {
-    var feeds: [String: MPSGraphTensor] {
-        (feedTensors ?? []).reduce(into: [:]) {
-            $0[$1.operation.name] = $1
-        }
-    }
-
-    func encode(to commandBuffer: MPSCommandBuffer, inputs: [MPSGraphTensorData]) -> [MPSGraphTensorData] {
-        autoreleasepool {
-            encode(to: commandBuffer, inputs: inputs, results: nil, executionDescriptor: nil)
-        }
-    }
-
-    func encode(to commandBuffer: MPSCommandBuffer, inputs: [String: MPSGraphTensorData]) -> [MPSGraphTensorData] {
-        autoreleasepool {
-            encode(to: commandBuffer, inputs: (feedTensors ?? []).compactMap {
-                inputs[$0.operation.name]
-            }, results: nil, executionDescriptor: nil)
-        }
-    }
-}
-
 private extension MPSGraphTensorData {
     func transform(in commandBuffer: MPSCommandBuffer, _ actions: [(MPSGraphTensor) -> MPSGraphTensor]) -> MPSGraphTensorData {
-        actions.isEmpty ? self : MPSCompiledGraph(device: commandBuffer.device) { graph in
+        actions.isEmpty ? self : MPSCompiledGraph(device: commandBuffer.device) {
             [
-                actions.reduce(graph.placeholder(shape: shape, dataType: dataType, name: nil)) { $1($0) },
+                "Y": actions.reduce($0.placeholder(shape: shape, dataType: dataType, name: "X")) { $1($0) },
             ]
-        }.executable.encode(to: commandBuffer, inputs: [self])[0]
+        }(self, in: commandBuffer)
     }
 }
 
 public extension MPSGraphTensorData {
-    convenience init(floats: [Float], shape: [Int], device: MTLDevice) {
+    convenience init(floats: [Float], shape: [Int]? = nil, device: MTLDevice) {
         self.init(
             device: .init(mtlDevice: device),
             data: floats.rawData,
-            shape: shape.nsnumbers,
+            shape: (shape ?? [floats.count]).nsnumbers,
             dataType: .float32
         )
     }

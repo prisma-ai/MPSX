@@ -44,8 +44,7 @@ final class OnnxTests: XCTestCase {
             // ⚠️⚠️⚠️ This method automatically resizes input image to match input shape. Please keep in mind to feed unstretched square image to the graph for correct predictions. This behavior is model specific.
             return .NCHW(
                 texture: inputTexture,
-                tensorShape: graph.inputShapes.first!.value,
-                tensorDataType: graph.inputDataTypes.first!.value,
+                tensor: graph.executable.inputs.first!.value,
                 in: $0
             )
         }
@@ -54,7 +53,7 @@ final class OnnxTests: XCTestCase {
 
         func predict() -> MPSNDArray {
             gpu.commandQueue.sync {
-                graph.encode(to: $0, inputs: [input])[0].synchronizedNDArray(in: $0)
+                graph.executable(input, in: $0).synchronizedNDArray(in: $0)
             }
         }
 
@@ -73,7 +72,7 @@ final class OnnxTests: XCTestCase {
 
         // ⚠️⚠️⚠️ You can find required files in 1.1.1 release attachments
 
-        let model = try OnnxModel(data: data(arg: 3)) // candy-8.onnx
+        let model = try OnnxModel(data: data(arg: 1)) // candy-8.onnx
 
         // STEP 1️⃣: setup metal stuff
 
@@ -92,7 +91,7 @@ final class OnnxTests: XCTestCase {
 
         // STEP 3️⃣: prepare inputs and warm up graph
 
-        let inputTexture = try await inputTexture(arg: 1)
+        let inputImage = try await inputTexture(arg: 2)
 
         let input: MPSGraphTensorData = gpu.commandQueue.sync {
             // ❕ This call is optional: first run of the graph is slower than the others, so for clear measurements we perform warm-up.
@@ -100,9 +99,8 @@ final class OnnxTests: XCTestCase {
             graph.warmUp(in: $0)
 
             return .NCHW(
-                texture: inputTexture,
-                tensorShape: graph.inputShapes.first!.value,
-                tensorDataType: graph.inputDataTypes.first!.value,
+                texture: inputImage,
+                tensor: graph.executable.inputs.first!.value,
                 in: $0
             )
         }
@@ -111,7 +109,7 @@ final class OnnxTests: XCTestCase {
 
         func styleTransfer() -> MTLTexture {
             gpu.commandQueue.sync {
-                graph.encode(to: $0, inputs: [input])[0].transposeNHWC(in: $0).texture2D(
+                graph.executable(input, in: $0).transposeNHWC(in: $0).texture2D(
                     pixelFormat: .rgba8Unorm,
                     converter: gpu.imageConverter,
                     in: $0
@@ -123,6 +121,6 @@ final class OnnxTests: XCTestCase {
             _ = styleTransfer()
         }
 
-        try save(texture: styleTransfer(), arg: 2)
+        try save(texture: styleTransfer(), arg: 3)
     }
 }

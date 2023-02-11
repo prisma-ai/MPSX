@@ -13,7 +13,7 @@ public final class OnnxGraph {
         device: MTLDevice,
         config: OnnxGraphConfig = .init()
     ) throws {
-        compiledGraph = try MPSCompiledGraph(device: device) { mpsGraph in
+        executable = try MPSCompiledGraph(device: device) { mpsGraph in
             let onnxGraph = model.proto.graph
 
             let tensorsDataType: MPSDataType
@@ -45,6 +45,12 @@ public final class OnnxGraph {
             let swizzled = model.proto.producerName == "MPSX"
 
             var constants: [String: Onnx_TensorProto] = model.initializer
+
+            var mpsNames: [String: String] = [:]
+            var onnxNames: [String: String] = [:]
+
+            mpsNames.reserveCapacity(onnxGraph.node.count)
+            onnxNames.reserveCapacity(onnxGraph.node.count)
 
             for node in onnxGraph.node {
                 let output: MPSGraphTensor
@@ -138,74 +144,57 @@ public final class OnnxGraph {
                     throw OnnxError.unsupportedOperator(node.opType)
                 }
 
+                mpsNames[node.name] = output.operation.name
+                onnxNames[output.operation.name] = node.name
+
                 node.output.forEach {
                     tensors[$0] = output
                 }
             }
 
-            let outputs: [MPSGraphTensor] = try model.outputs.map {
-                guard let tensor = tensors[$0] else {
+            return try model.outputs.reduce(into: [:]) {
+                guard let tensor = tensors[$1] else {
                     throw OnnxError.invalidModel
                 }
 
-                return mpsGraph.output(
+                $0[$1] = mpsGraph.output(
                     tensor: tensor,
-                    valuesRange: config.outputs[$0]?.valuesRange
+                    valuesRange: config.outputs[$1]?.valuesRange
                 )
             }
-
-            return outputs
         }
-
-        let feedTensors = (compiledGraph.executable.feedTensors ?? []).reduce(into: [:]) { $0[$1.operation.name] = $1 }
-        let targetTensors = (compiledGraph.executable.targetTensors ?? []).reduce(into: [:]) { $0[$1.operation.name] = $1 }
-
-        outputShapes = targetTensors.compactMapValues(\.shape).mapValues { $0.map(\.intValue) }
-        inputShapes = feedTensors.compactMapValues(\.shape).mapValues { $0.map(\.intValue) }
-        inputDataTypes = feedTensors.mapValues(\.dataType)
     }
 
     // MARK: Public
 
-    public let outputShapes: [String: [Int]]
-    public let inputShapes: [String: [Int]]
-    public let inputDataTypes: [String: MPSDataType]
-
-    public func encode(to commandBuffer: MPSCommandBuffer, inputs: [MPSGraphTensorData]) -> [MPSGraphTensorData] {
-        compiledGraph.executable.encode(to: commandBuffer, inputs: inputs)
-    }
-
-    public func encode(to commandBuffer: MPSCommandBuffer, inputs: [String: MPSGraphTensorData]) -> [MPSGraphTensorData] {
-        compiledGraph.executable.encode(to: commandBuffer, inputs: inputs)
-    }
-
-    // MARK: Private
-
-    private let compiledGraph: MPSCompiledGraph
+    public let executable: MPSCompiledGraph
 }
 
 public extension OnnxGraph {
     func warmUp(in commandBuffer: MPSCommandBuffer) {
-        _ = compiledGraph.executable.encode(
-            to: commandBuffer,
-            inputs: MPSCompiledGraph(device: commandBuffer.device) { g in
-                (compiledGraph.executable.feedTensors ?? []).map { t in
-                    g.randomUniformTensor(withShape: t.shape ?? [], name: nil).cast(to: t.dataType)
-                }
-            }.executable.encode(to: commandBuffer, inputs: [])
-        )
+        let randomInputs: [String: MPSGraphTensorData] = MPSCompiledGraph(device: commandBuffer.device) { g in
+            executable.inputs.mapValues { t in
+                g.randomUniformTensor(withShape: t.shape ?? [], name: nil).cast(to: t.dataType)
+            }
+        }([:], in: commandBuffer)
+
+        let _: [String: MPSGraphTensorData] = executable(randomInputs, in: commandBuffer)
     }
 
     func imageFrom(
         inputTextures: [String: MTLTexture],
         in commandBuffer: MPSCommandBuffer
     ) -> MPSTemporaryImage {
-        encode(to: commandBuffer, inputs: inputTextures.reduce(into: [:]) {
-            $0[$1.key] = .NCHW(
-                texture: $1.value,
-                tensorShape: inputShapes[$1.key]!, tensorDataType: inputDataTypes[$1.key]!, in: commandBuffer
-            )
-        })[0].transposeNHWC(in: commandBuffer).temporaryImage(in: commandBuffer)
+        executable(
+            inputTextures.reduce(into: [:]) {
+                $0[$1.key] = .NCHW(
+                    texture: $1.value,
+                    tensor: executable.inputs[$1.key]!,
+                    in: commandBuffer
+                )
+            },
+            in: commandBuffer
+        ).transposeNHWC(in: commandBuffer).temporaryImage(in: commandBuffer)
     }
 
     func texture2DFrom(
@@ -214,11 +203,15 @@ public extension OnnxGraph {
         converter: MPSImageConversion,
         in commandBuffer: MPSCommandBuffer
     ) -> MTLTexture {
-        encode(to: commandBuffer, inputs: inputTextures.reduce(into: [:]) {
-            $0[$1.key] = .NCHW(
-                texture: $1.value,
-                tensorShape: inputShapes[$1.key]!, tensorDataType: inputDataTypes[$1.key]!, in: commandBuffer
-            )
-        })[0].transposeNHWC(in: commandBuffer).texture2D(pixelFormat: pixelFormat, converter: converter, in: commandBuffer)
+        executable(
+            inputTextures.reduce(into: [:]) {
+                $0[$1.key] = .NCHW(
+                    texture: $1.value,
+                    tensor: executable.inputs[$1.key]!,
+                    in: commandBuffer
+                )
+            },
+            in: commandBuffer
+        ).transposeNHWC(in: commandBuffer).texture2D(pixelFormat: pixelFormat, converter: converter, in: commandBuffer)
     }
 }
