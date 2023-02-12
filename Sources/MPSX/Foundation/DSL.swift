@@ -409,7 +409,7 @@ public extension MPSGraph {
         channels: Int,
         height: Int,
         width: Int,
-        name: String? = nil
+        name: String
     ) -> MPSGraphTensor {
         placeholder(shape: [1, channels, height, width].nsnumbers, dataType: dataType, name: name)
     }
@@ -420,7 +420,7 @@ public extension MPSGraph {
         height: Int,
         width: Int,
         channels: Int,
-        name: String? = nil
+        name: String
     ) -> MPSGraphTensor {
         placeholder(shape: [1, height, width, channels].nsnumbers, dataType: dataType, name: name)
     }
