@@ -16,14 +16,11 @@ public final class OnnxGraph {
         executable = try MPSCompiledGraph(device: device) { mpsGraph in
             let onnxGraph = model.proto.graph
 
-            let tensorsDataType: MPSDataType
+            let tensorsDataType = config.tensorsDataType.mpsDataType
 
-            switch config.tensorsDataType {
-            case .fp16: tensorsDataType = .float16
-            case .fp32: tensorsDataType = .float32
-            }
+            var constants: [String: Onnx_TensorProto] = model.initializer
 
-            var tensors: [String: MPSGraphTensor] = try model.initializer.mapValues {
+            var tensors: [String: MPSGraphTensor] = try constants.mapValues {
                 try mpsGraph.constant($0, targetDataType: tensorsDataType)
             }
 
@@ -42,119 +39,25 @@ public final class OnnxGraph {
                 )
             }
 
-            let swizzled = model.proto.producerName == "MPSX"
-
-            var constants: [String: Onnx_TensorProto] = model.initializer
-
-            var mpsNames: [String: String] = [:]
-            var onnxNames: [String: String] = [:]
-
-            mpsNames.reserveCapacity(onnxGraph.node.count)
-            onnxNames.reserveCapacity(onnxGraph.node.count)
-
             for node in onnxGraph.node {
-                let output: MPSGraphTensor
+                let success = try mpsGraph.onnx(
+                    node: node,
+                    optimizedForMPS: model.optimizedForMPS,
+                    tensorsDataType: tensorsDataType,
+                    tensors: &tensors,
+                    constants: &constants
+                )
 
-                switch node.opType {
-                case "Add":
-                    output = try mpsGraph.arithmetic(op: .add, node, tensors)
-                case "Sub":
-                    output = try mpsGraph.arithmetic(op: .sub, node, tensors)
-                case "Mul":
-                    output = try mpsGraph.arithmetic(op: .mul, node, tensors)
-                case "Div":
-                    output = try mpsGraph.arithmetic(op: .div, node, tensors)
-                case "BatchNormalization":
-                    output = try mpsGraph.batchNorm(node, tensors)
-                case "InstanceNormalization":
-                    output = try mpsGraph.instanceNorm(node, tensors)
-                case "custom_group_norm": // onnx does not support group norm out of the box
-                    output = try mpsGraph.groupNorm(node, tensors, constants)
-                case "Concat":
-                    output = try mpsGraph.concat(node, tensors)
-                case "Conv":
-                    output = try mpsGraph.conv(node, tensors, swizzled: swizzled)
-                case "FusedConv":
-                    output = try mpsGraph.fusedConv(node, tensors, swizzled: swizzled)
-                case "ConvTranspose":
-                    output = try mpsGraph.convTranspose(node, tensors)
-                case "Gemm",
-                     "MatMul":
-                    output = try mpsGraph.gemm(node, tensors)
-                case "GlobalAveragePool":
-                    output = try mpsGraph.globalPool(.avg, node, tensors)
-                case "AveragePool":
-                    output = try mpsGraph.pool(.avg, node, tensors)
-                case "MaxPool":
-                    output = try mpsGraph.pool(.max, node, tensors)
-                case "Pad":
-                    output = try mpsGraph.pad(node, tensors, constants)
-                case "Reshape":
-                    output = try mpsGraph.reshape(node, tensors, constants)
-                case "Squeeze":
-                    output = try mpsGraph.squeeze(node, tensors, constants)
-                case "Unsqueeze":
-                    output = try mpsGraph.unsqueeze(node, tensors, constants)
-                case "Shape":
-                    output = try mpsGraph.shape(node, tensors)
-                case "Relu":
-                    output = try mpsGraph.relu(node, tensors)
-                case "PRelu":
-                    output = try mpsGraph.prelu(node, tensors, constants)
-                case "Elu":
-                    output = try mpsGraph.elu(node, tensors)
-                case "Sigmoid":
-                    output = try mpsGraph.sigmoid(node, tensors)
-                case "HardSigmoid":
-                    output = try mpsGraph.hardSigmoid(node, tensors)
-                case "Upsample",
-                     "Resize":
-                    output = try mpsGraph.resize(node, tensors, constants)
-                case "Tanh":
-                    output = try mpsGraph.tanh(node, tensors)
-                case "Softmax":
-                    output = try mpsGraph.softmax(node, tensors)
-                case "Flatten":
-                    output = try mpsGraph.flatten(node, tensors)
-                case "Transpose":
-                    output = try mpsGraph.permute(node, tensors)
-                case "Slice":
-                    output = try mpsGraph.slice(node, tensors, constants)
-                case "ReduceMean":
-                    output = try mpsGraph.reduceMean(node, tensors, constants)
-                case "Dropout":
-                    output = try mpsGraph.dropout(node, tensors, constants)
-                case "Constant":
-                    guard let value = node.attr("value") else {
-                        throw OnnxError.invalidInput(node.name)
-                    }
-                    node.output.forEach {
-                        constants[$0] = value.t
-                    }
-                    output = try mpsGraph.constant(value.t, targetDataType: tensorsDataType)
-                case "Cast",
-                     "Clip":
-                    output = try mpsGraph.passthrough(node, tensors)
-                case "Split":
-                    try mpsGraph.split(node, tensors).forEach {
-                        tensors[$0.0] = $0.1
-                    }
+                if success {
                     continue
-                default:
-                    throw OnnxError.unsupportedOperator(node.opType)
                 }
 
-                mpsNames[node.name] = output.operation.name
-                onnxNames[output.operation.name] = node.name
-
-                node.output.forEach {
-                    tensors[$0] = output
-                }
+                throw OnnxError.unsupportedOperator(node.opType)
             }
 
             return try model.outputs.reduce(into: [:]) {
                 guard let tensor = tensors[$1] else {
-                    throw OnnxError.invalidModel
+                    throw OnnxError.invalidModel(reason: "tensor named \($1) not found")
                 }
 
                 $0[$1] = mpsGraph.output(
@@ -167,7 +70,49 @@ public final class OnnxGraph {
 
     // MARK: Public
 
-    public let executable: MPSCompiledGraph
+    public var inputs: [String: MPSGraphTensor] {
+        executable.inputs
+    }
+
+    public var outputs: [String: MPSGraphTensor] {
+        executable.outputs
+    }
+
+    /// single input -> single output
+    public func callAsFunction(
+        _ input: MPSGraphTensorData,
+        in commandBuffer: MPSCommandBuffer
+    ) throws -> MPSGraphTensorData {
+        executable(input, in: commandBuffer)
+    }
+
+    /// multiple inputs -> single output
+    public func callAsFunction(
+        _ inputs: [String: MPSGraphTensorData],
+        in commandBuffer: MPSCommandBuffer
+    ) throws -> MPSGraphTensorData {
+        executable(inputs, in: commandBuffer)
+    }
+
+    /// single input  -> multiple outputs
+    public func callAsFunction(
+        _ input: MPSGraphTensorData,
+        in commandBuffer: MPSCommandBuffer
+    ) throws -> [String: MPSGraphTensorData] {
+        executable(input, in: commandBuffer)
+    }
+
+    /// multiple inputs -> multiple outputs
+    public func callAsFunction(
+        _ inputs: [String: MPSGraphTensorData],
+        in commandBuffer: MPSCommandBuffer
+    ) throws -> [String: MPSGraphTensorData] {
+        executable(inputs, in: commandBuffer)
+    }
+
+    // MARK: Private
+
+    private let executable: MPSCompiledGraph
 }
 
 public extension OnnxGraph {
@@ -182,35 +127,23 @@ public extension OnnxGraph {
     }
 
     func imageFrom(
-        inputTextures: [String: MTLTexture],
+        _ inputTexture: MTLTexture,
         in commandBuffer: MPSCommandBuffer
-    ) -> MPSTemporaryImage {
-        executable(
-            inputTextures.reduce(into: [:]) {
-                $0[$1.key] = .NCHW(
-                    texture: $1.value,
-                    tensor: executable.inputs[$1.key]!,
-                    in: commandBuffer
-                )
-            },
+    ) throws -> MPSTemporaryImage {
+        try self(
+            .NCHW(texture: inputTexture, matching: inputs.first!.value, in: commandBuffer),
             in: commandBuffer
         ).nhwc(in: commandBuffer).temporaryImage(in: commandBuffer)
     }
 
     func texture2DFrom(
-        inputTextures: [String: MTLTexture],
+        _ inputTexture: MTLTexture,
         pixelFormat: MTLPixelFormat = .bgra8Unorm,
         converter: MPSImageConversion,
         in commandBuffer: MPSCommandBuffer
-    ) -> MTLTexture {
-        executable(
-            inputTextures.reduce(into: [:]) {
-                $0[$1.key] = .NCHW(
-                    texture: $1.value,
-                    tensor: executable.inputs[$1.key]!,
-                    in: commandBuffer
-                )
-            },
+    ) throws -> MTLTexture {
+        try self(
+            .NCHW(texture: inputTexture, matching: inputs.first!.value, in: commandBuffer),
             in: commandBuffer
         ).nhwc(in: commandBuffer).texture2D(pixelFormat: pixelFormat, converter: converter, in: commandBuffer)
     }

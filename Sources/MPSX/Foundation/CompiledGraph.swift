@@ -4,19 +4,32 @@ import MetalPerformanceShadersGraph
 public final class MPSCompiledGraph {
     // MARK: Lifecycle
 
-    public init(
+    public convenience init(
         options: MPSGraphOptions = .none,
         compilationDescriptor: MPSGraphCompilationDescriptor? = nil,
         device: MTLDevice,
         body: (MPSGraph) throws -> [String: MPSGraphTensor]
     ) rethrows {
-        let graph = MPSGraph()
-        graph.options = options
+        let graph = MPSGraph(options: options)
 
         let outputTensors = try autoreleasepool {
             try body(graph)
         }
 
+        self.init(
+            compilationDescriptor: compilationDescriptor,
+            device: device,
+            graph: graph,
+            outputTensors: outputTensors
+        )
+    }
+
+    internal init(
+        compilationDescriptor: MPSGraphCompilationDescriptor? = nil,
+        device: MTLDevice,
+        graph: MPSGraph,
+        outputTensors: [String: MPSGraphTensor]
+    ) {
         let executable = autoreleasepool {
             graph.compile(
                 with: .init(mtlDevice: device),
@@ -28,7 +41,7 @@ public final class MPSCompiledGraph {
                 compilationDescriptor: compilationDescriptor
             )
         }
-        executable.options = options
+        executable.options = graph.options
 
         let outputKeys = outputTensors.reduce(into: [:]) { $0[$1.value.operation.name] = $1.key }
 

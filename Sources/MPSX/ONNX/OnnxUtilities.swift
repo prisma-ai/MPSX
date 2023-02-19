@@ -1,6 +1,17 @@
 import Foundation
 import MetalPerformanceShadersGraph
 
+extension OnnxGraphConfig.TensorsDataType {
+    var mpsDataType: MPSDataType {
+        switch self {
+        case .fp16:
+            return .float16
+        case .fp32:
+            return .float32
+        }
+    }
+}
+
 extension Onnx_TensorProto.DataType {
     var matchingMPSDataType: MPSDataType? {
         switch self {
@@ -48,51 +59,51 @@ extension Onnx_NodeProto {
 extension Data {
     func signedIntegers(assumingIntegerDataType dataType: Onnx_TensorProto.DataType) -> [Int]? {
         switch dataType {
-        case .int8: return arrayOf(Int8.self).map { Int($0) }
-        case .int16: return arrayOf(Int16.self).map { Int($0) }
-        case .int32: return arrayOf(Int32.self).map { Int($0) }
-        case .int64: return arrayOf(Int.self)
+        case .int8: return mapMemory(of: Int8.self) { $0.map { Int($0) } }
+        case .int16: return mapMemory(of: Int16.self) { $0.map { Int($0) } }
+        case .int32: return mapMemory(of: Int32.self) { $0.map { Int($0) } }
+        case .int64: return array(of: Int.self)
         default: return nil
         }
     }
 
     func unsignedIntegers(assumingIntegerDataType dataType: Onnx_TensorProto.DataType) -> [UInt]? {
         switch dataType {
-        case .uint8: return arrayOf(UInt8.self).map { UInt($0) }
-        case .uint16: return arrayOf(UInt16.self).map { UInt($0) }
-        case .uint32: return arrayOf(UInt32.self).map { UInt($0) }
-        case .uint64: return arrayOf(UInt.self)
+        case .uint8: return mapMemory(of: UInt8.self) { $0.map { UInt($0) } }
+        case .uint16: return mapMemory(of: UInt16.self) { $0.map { UInt($0) } }
+        case .uint32: return mapMemory(of: UInt32.self) { $0.map { UInt($0) } }
+        case .uint64: return array(of: UInt.self)
         default: return nil
         }
     }
 
-    func floats(assumingNonFloatDataType dataType: Onnx_TensorProto.DataType) -> [Float]? {
+    func floats(assumingIntegerDataType dataType: Onnx_TensorProto.DataType) -> [Float]? {
         switch dataType {
-        case .int8: return FPAC._Int8_Float32(arrayOf(Int8.self))
-        case .int16: return FPAC._Int16_Float32(arrayOf(Int16.self))
-        case .int32: return FPAC._Int32_Float32(arrayOf(Int32.self))
-        case .int64: return arrayOf(Int64.self).map { Float($0) }
-        case .uint8: return FPAC._UInt8_Float32(arrayOf(UInt8.self))
-        case .uint16: return FPAC._UInt16_Float32(arrayOf(UInt16.self))
-        case .uint32: return FPAC._UInt32_Float32(arrayOf(UInt32.self))
-        case .uint64: return arrayOf(UInt64.self).map { Float($0) }
+        case .int8: return mapMemory(of: Int8.self, FPC._Int8_Float32)
+        case .int16: return mapMemory(of: Int16.self, FPC._Int16_Float32)
+        case .int32: return mapMemory(of: Int32.self, FPC._Int32_Float32)
+        case .int64: return mapMemory(of: Int64.self) { $0.map { Float($0) } }
+        case .uint8: return mapMemory(of: UInt8.self, FPC._UInt8_Float32)
+        case .uint16: return mapMemory(of: UInt16.self, FPC._UInt16_Float32)
+        case .uint32: return mapMemory(of: UInt32.self, FPC._UInt32_Float32)
+        case .uint64: return mapMemory(of: UInt64.self) { $0.map { Float($0) } }
         default: return nil
         }
     }
 
     func floats16(assumingDataType dataType: Onnx_TensorProto.DataType) -> [Float16]? {
         switch dataType {
-        case .float16: return arrayOf(Float16.self)
-        case .float: return FPAC._Float32_Float16(arrayOf(Float.self))
-        default: return floats(assumingNonFloatDataType: dataType).flatMap(FPAC._Float32_Float16(_:))
+        case .float16: return array(of: Float16.self)
+        case .float: return mapMemory(of: Float.self, FPC._Float32_Float16)
+        default: return floats(assumingIntegerDataType: dataType).flatMap { FPC._Float32_Float16($0) }
         }
     }
 
     func floats32(assumingDataType dataType: Onnx_TensorProto.DataType) -> [Float]? {
         switch dataType {
-        case .float16: return FPAC._Float16_Float32(arrayOf(Float16.self))
-        case .float: return arrayOf(Float.self)
-        default: return floats(assumingNonFloatDataType: dataType)
+        case .float16: return mapMemory(of: Float16.self, FPC._Float16_Float32)
+        case .float: return array(of: Float.self)
+        default: return floats(assumingIntegerDataType: dataType)
         }
     }
 }

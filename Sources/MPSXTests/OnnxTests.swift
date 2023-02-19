@@ -44,7 +44,7 @@ final class OnnxTests: XCTestCase {
             // ⚠️⚠️⚠️ This method automatically resizes input image to match input shape. Please keep in mind to feed unstretched square image to the graph for correct predictions. This behavior is model specific.
             return .NCHW(
                 texture: inputTexture,
-                tensor: graph.executable.inputs.first!.value,
+                matching: graph.inputs.first!.value,
                 in: $0
             )
         }
@@ -53,7 +53,7 @@ final class OnnxTests: XCTestCase {
 
         func predict() -> MPSGraphTensorData {
             gpu.commandQueue.sync {
-                graph.executable(input, in: $0)
+                try! graph(input, in: $0)
             }
         }
 
@@ -66,6 +66,8 @@ final class OnnxTests: XCTestCase {
         let ndarray = gpu.commandQueue.sync {
             rawData.synchronizedNDArray(in: $0)
         }
+
+        // ⚠️ requires manual assertion
 
         ndarray.floats.enumerated().sorted(by: { $0.element > $1.element }).prefix(3).forEach {
             print(labels[$0.offset])
@@ -106,7 +108,7 @@ final class OnnxTests: XCTestCase {
 
             return .NCHW(
                 texture: inputImage,
-                tensor: graph.executable.inputs.first!.value,
+                matching: graph.inputs.first!.value,
                 in: $0
             )
         }
@@ -115,7 +117,7 @@ final class OnnxTests: XCTestCase {
 
         func styleTransfer() -> MPSGraphTensorData {
             gpu.commandQueue.sync {
-                graph.executable(input, in: $0)
+                try! graph(input, in: $0)
             }
         }
 
@@ -132,6 +134,8 @@ final class OnnxTests: XCTestCase {
                 in: $0
             )
         }
+
+        // ⚠️ requires manual assertion
 
         try save(texture: textureToSave, arg: 3)
     }

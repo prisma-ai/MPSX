@@ -37,20 +37,20 @@ extension Array {
     @usableFromInline
     var rawData: Data {
         withUnsafeBufferPointer {
-            Data(buffer: $0)
+            Data(buffer: $0) // copy
         }
     }
 }
 
 extension Data {
-    func arrayOf<T>(_: T.Type) -> [T] {
-        let n = count / MemoryLayout<T>.stride
+    func mapMemory<T, R>(of _: T.Type, _ body: (UnsafeBufferPointer<T>) throws -> R) rethrows -> R {
+        try withUnsafeBytes {
+            try $0.withMemoryRebound(to: T.self, body)
+        }
+    }
 
-        return withUnsafeBytes {
-            $0.baseAddress
-                .flatMap { $0.bindMemory(to: T.self, capacity: n) }
-                .flatMap { Array(UnsafeBufferPointer<T>(start: $0, count: n)) }
-        } ?? []
+    func array<T>(of _: T.Type) -> [T] {
+        mapMemory(of: T.self) { Array($0) } // copy
     }
 }
 
@@ -80,22 +80,23 @@ public extension Sequence where Element: BinaryInteger {
 }
 
 private extension MPSNDArray {
-    func arrayOf<T: Numeric>(_: T.Type) -> [T] {
-        let stride = MemoryLayout<T>.stride
-
-        assert(stride == dataTypeSize)
-
-        let count = (0 ..< numberOfDimensions).reduce(1) {
-            $0 * length(ofDimension: $1)
-        }
-
-        var array = [T](repeating: 0, count: count)
-        readBytes(&array, strideBytes: nil)
-        return array
+    var shape: [Int] {
+        (0 ..< numberOfDimensions).map(length(ofDimension:))
     }
 
-    func bufferOf<T: Numeric>(
-        _: T.Type,
+    func array<T: Numeric>(of _: T.Type) -> [T] {
+        assert(MemoryLayout<T>.stride == dataTypeSize)
+
+        let count = shape.reduce(1, *)
+
+        return .init(unsafeUninitializedCapacity: count) { buffer, initializedCount in
+            readBytes(buffer.baseAddress!, strideBytes: nil)
+            initializedCount = count
+        }
+    }
+
+    func buffer<T: Numeric>(
+        of _: T.Type,
         options: MTLResourceOptions,
         commandBuffer: MTLCommandBuffer
     ) -> MTLBuffer? {
@@ -103,39 +104,34 @@ private extension MPSNDArray {
 
         assert(stride == dataTypeSize)
 
-        let count = (0 ..< numberOfDimensions).reduce(1) {
-            $0 * length(ofDimension: $1)
+        let count = shape.reduce(1, *)
+
+        return device.makeBuffer(length: count * stride, options: options).flatMap {
+            exportData(
+                with: commandBuffer,
+                to: $0,
+                destinationDataType: dataType,
+                offset: 0,
+                rowStrides: nil
+            )
+            return $0
         }
-
-        guard let buffer = device.makeBuffer(length: count * stride, options: options) else {
-            return nil
-        }
-
-        exportData(
-            with: commandBuffer,
-            to: buffer,
-            destinationDataType: dataType,
-            offset: 0,
-            rowStrides: nil
-        )
-
-        return buffer
     }
 }
 
 public extension MPSNDArray {
     var floats: [Float] {
         switch dataType {
-        case .float32: return arrayOf(Float.self)
-        case .float16: return FPAC._Float16_Float32(arrayOf(Float16.self))
+        case .float32: return array(of: Float.self)
+        case .float16: return FPC._Float16_Float32(array(of: Float16.self))
 
-        case .int8: return FPAC._Int8_Float32(arrayOf(Int8.self))
-        case .int16: return FPAC._Int16_Float32(arrayOf(Int16.self))
-        case .int32: return FPAC._Int32_Float32(arrayOf(Int32.self))
+        case .int8: return FPC._Int8_Float32(array(of: Int8.self))
+        case .int16: return FPC._Int16_Float32(array(of: Int16.self))
+        case .int32: return FPC._Int32_Float32(array(of: Int32.self))
 
-        case .uInt8: return FPAC._UInt8_Float32(arrayOf(UInt8.self))
-        case .uInt16: return FPAC._UInt16_Float32(arrayOf(UInt16.self))
-        case .uInt32: return FPAC._UInt32_Float32(arrayOf(UInt32.self))
+        case .uInt8: return FPC._UInt8_Float32(array(of: UInt8.self))
+        case .uInt16: return FPC._UInt16_Float32(array(of: UInt16.self))
+        case .uInt32: return FPC._UInt32_Float32(array(of: UInt32.self))
 
         default: assertionFailure(); return []
         }
@@ -146,16 +142,16 @@ public extension MPSNDArray {
         commandBuffer: MTLCommandBuffer
     ) -> MTLBuffer? {
         switch dataType {
-        case .float32: return bufferOf(Float.self, options: options, commandBuffer: commandBuffer)
-        case .float16: return bufferOf(Float16.self, options: options, commandBuffer: commandBuffer)
+        case .float32: return buffer(of: Float.self, options: options, commandBuffer: commandBuffer)
+        case .float16: return buffer(of: Float16.self, options: options, commandBuffer: commandBuffer)
 
-        case .int8: return bufferOf(Int8.self, options: options, commandBuffer: commandBuffer)
-        case .int16: return bufferOf(Int16.self, options: options, commandBuffer: commandBuffer)
-        case .int32: return bufferOf(Int32.self, options: options, commandBuffer: commandBuffer)
+        case .int8: return buffer(of: Int8.self, options: options, commandBuffer: commandBuffer)
+        case .int16: return buffer(of: Int16.self, options: options, commandBuffer: commandBuffer)
+        case .int32: return buffer(of: Int32.self, options: options, commandBuffer: commandBuffer)
 
-        case .uInt8: return bufferOf(UInt8.self, options: options, commandBuffer: commandBuffer)
-        case .uInt16: return bufferOf(UInt16.self, options: options, commandBuffer: commandBuffer)
-        case .uInt32: return bufferOf(UInt32.self, options: options, commandBuffer: commandBuffer)
+        case .uInt8: return buffer(of: UInt8.self, options: options, commandBuffer: commandBuffer)
+        case .uInt16: return buffer(of: UInt16.self, options: options, commandBuffer: commandBuffer)
+        case .uInt32: return buffer(of: UInt32.self, options: options, commandBuffer: commandBuffer)
 
         default: assertionFailure(); return nil
         }
@@ -185,11 +181,11 @@ private extension MPSGraphTensorData {
 }
 
 public extension MPSGraphTensorData {
-    convenience init(floats: [Float], shape: [Int]? = nil, device: MTLDevice) {
-        self.init(
+    static func floats(_ array: [Float], shape: [Int]? = nil, device: MTLDevice) -> MPSGraphTensorData {
+        .init(
             device: .init(mtlDevice: device),
-            data: floats.rawData,
-            shape: (shape ?? [floats.count]).nsnumbers,
+            data: array.rawData,
+            shape: (shape ?? [array.count]).nsnumbers,
             dataType: .float32
         )
     }
@@ -359,7 +355,7 @@ public extension MPSGraphTensorData {
     @inlinable
     static func NHWC(
         texture: MTLTexture,
-        tensor: MPSGraphTensor,
+        matching tensor: MPSGraphTensor,
         resizeMode: MPSGraphResizeMode = .bilinear,
         in commandBuffer: MPSCommandBuffer
     ) -> MPSGraphTensorData {
@@ -375,7 +371,7 @@ public extension MPSGraphTensorData {
     @inlinable
     static func NCHW(
         texture: MTLTexture,
-        tensor: MPSGraphTensor,
+        matching tensor: MPSGraphTensor,
         resizeMode: MPSGraphResizeMode = .bilinear,
         in commandBuffer: MPSCommandBuffer
     ) -> MPSGraphTensorData {
@@ -386,5 +382,12 @@ public extension MPSGraphTensorData {
             resizeMode: resizeMode,
             in: commandBuffer
         )
+    }
+}
+
+public extension MPSGraph {
+    convenience init(options: MPSGraphOptions) {
+        self.init()
+        self.options = options
     }
 }

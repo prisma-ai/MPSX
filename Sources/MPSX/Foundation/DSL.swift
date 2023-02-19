@@ -6,7 +6,7 @@ public extension MPSGraph {
         constant(vector.rawData, shape: (shape ?? [vector.count]).nsnumbers, dataType: .float32)
     }
 
-    #if !((os(macOS) || targetEnvironment(macCatalyst)) && arch(x86_64))
+    #if !arch(x86_64)
     @inlinable
     func const(_ vector: [Swift.Float16], shape: [Int]? = nil) -> MPSGraphTensor {
         constant(vector.rawData, shape: (shape ?? [vector.count]).nsnumbers, dataType: .float16)

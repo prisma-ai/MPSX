@@ -1,10 +1,48 @@
 import MetalKit
 import MetalPerformanceShaders
 import MetalPerformanceShadersGraph
-import MPSX
+@testable import MPSX
 import XCTest
 
 final class FoundationTests: XCTestCase {
+    /// test [Float] -> Data -> [Float] conversion
+    func testDataArrayConversion() {
+        let array1 = (0 ..< 10).map { _ in
+            Float.random(in: -5 ... 5)
+        }
+
+        let data = array1.rawData
+
+        let array2 = data.array(of: Float.self)
+
+        XCTAssert(array1 == array2)
+    }
+
+    /// Test fast floats conversion
+    func testFPC() {
+        func _test<U: Numeric, V: Numeric>(range: Range<Int> = 0 ..< 10, body: ([U]) -> [V], compare _: (V, V) -> Bool) -> Bool {
+            let shuffledRange = range.shuffled()
+            let input = shuffledRange.map { U(exactly: $0)! }
+            let expected = shuffledRange.map { V(exactly: $0)! }
+            let output = body(input)
+            return output.count == expected.count && zip(output, expected).allSatisfy {
+                $0.0 == $0.1
+            }
+        }
+
+        #if !arch(x86_64)
+        XCTAssertTrue(_test(body: { (x: [Float]) in FPC._Float32_Float16(x) }, compare: { abs($0 - $1) < .ulpOfOne }))
+        XCTAssertTrue(_test(body: { (x: [Float16]) in FPC._Float16_Float32(x) }, compare: { abs($0 - $1) < Float.ulpOfOne }))
+        #endif
+        XCTAssertTrue(_test(body: { (x: [Int8]) in FPC._Int8_Float32(x) }, compare: ==))
+        XCTAssertTrue(_test(body: { (x: [Int16]) in FPC._Int16_Float32(x) }, compare: ==))
+        XCTAssertTrue(_test(body: { (x: [Int32]) in FPC._Int32_Float32(x) }, compare: ==))
+        XCTAssertTrue(_test(body: { (x: [UInt8]) in FPC._UInt8_Float32(x) }, compare: ==))
+        XCTAssertTrue(_test(body: { (x: [UInt16]) in FPC._UInt16_Float32(x) }, compare: ==))
+        XCTAssertTrue(_test(body: { (x: [UInt32]) in FPC._UInt32_Float32(x) }, compare: ==))
+    }
+
+    /// Test image processing using MPSCompiledGraph and MPSGraph DSL
     func testCompiledGraphWithDSL() async throws {
         let gpu = GPU.default
 
@@ -35,14 +73,17 @@ final class FoundationTests: XCTestCase {
         let texture = gpu.commandQueue.sync {
             compiledGraph(.NHWC(
                 texture: inputTexture,
-                tensor: compiledGraph.inputs["X"]!,
+                matching: compiledGraph.inputs["X"]!,
                 in: $0
             ), in: $0).texture2D(pixelFormat: .rgba8Unorm, converter: gpu.imageConverter, in: $0)
         }
 
+        // ⚠️ requires manual assertion
+
         try save(texture: texture, arg: 2)
     }
 
+    /// Test MPSCompiledGraph multi input/multi output
     func testCompiledGraphMultipleInputsAndMultipleOutputs() async throws {
         let gpu = GPU.default
 
@@ -72,9 +113,9 @@ final class FoundationTests: XCTestCase {
         let results = gpu.commandQueue.sync { commandBuffer in
             compiledGraph(
                 [
-                    "X": .init(floats: x, device: gpu.device),
-                    "Y": .init(floats: y, device: gpu.device),
-                    "Z": .init(floats: z, device: gpu.device),
+                    "X": .floats(x, device: gpu.device),
+                    "Y": .floats(y, device: gpu.device),
+                    "Z": .floats(z, device: gpu.device),
                 ],
                 in: commandBuffer
             ).mapValues {
