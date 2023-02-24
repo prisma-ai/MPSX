@@ -53,9 +53,9 @@ let graph = try OnnxGraph(
 ### 1) Raw inputs/outputs:
 
 ``` swift
-let outputs: [MPSGraphTensorData] = graph.encode(
-    to: <MPSCommandBuffer>,
-    inputs: <[String: MPSGraphTensorData]> // String key is a model corresponding input name
+let outputs: [MPSGraphTensorData] = graph(
+    <[String: MPSGraphTensorData]> // String key is a model corresponding input name
+    in: <MPSCommandBuffer>
 )
 ```
 
@@ -66,7 +66,7 @@ This method requires manual data transformation from/to MPSGraphTensorData. For 
 ``` swift
 let input: MPSGraphTensorData = .NCHW(
     texture: <MTLTexture>,
-    tensor: <MPSGraphTensor>,
+    matching: <MPSGraphTensor>,
     in: <MPSCommandBuffer>
 )
 ```
@@ -75,7 +75,7 @@ let input: MPSGraphTensorData = .NCHW(
 
 ``` swift
 let image: MPSTemporaryImage = <MPSGraphTensorData>
-    .transposeNHWC(in: <MPSCommandBuffer>)
+    .nhwc(in: <MPSCommandBuffer>)
     .temporaryImage(in: <MPSCommandBuffer>)
 ```
 
@@ -104,7 +104,7 @@ let texture: MTLTexture = graph.texture2DFrom(
 
 # MPSGraph DSL
 
-In addition to ONNX graphs, MPSX provides a convenient API for building [custom computational graphs](/Sources/MPSXTests/FoundationTests.swift#L16) similar to NumPy.
+In addition to ONNX graphs, MPSX provides a convenient API for building [custom computational graphs](/Sources/MPSXTests/FoundationTests.swift#L16) similar to NumPy/PyTorch.
 
 # Links
 
@@ -127,7 +127,7 @@ done;
 MPSX...
 
 1) supports limited set of ONNX operators
-2) is Pytorch oriented - TF models converted to ONNX may not be supported
+2) is PyTorch oriented - TF models converted to ONNX may not be supported
 3) is available only on iOS 15+/macOS 12+
 
 # Installation
