@@ -1,7 +1,7 @@
 import Accelerate
 import Foundation
 
-#if arch(x86_64)
+#if !arch(arm64)
 typealias Float16 = UInt16
 #endif
 

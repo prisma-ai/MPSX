@@ -42,6 +42,15 @@ extension Array {
     }
 }
 
+extension ArraySlice {
+    @usableFromInline
+    var rawData: Data {
+        withUnsafeBufferPointer {
+            Data(buffer: $0) // copy
+        }
+    }
+}
+
 extension Data {
     func mapMemory<T, R>(of _: T.Type, _ body: (UnsafeBufferPointer<T>) throws -> R) rethrows -> R {
         try withUnsafeBytes {
@@ -182,10 +191,14 @@ private extension MPSGraphTensorData {
 
 public extension MPSGraphTensorData {
     static func floats(_ array: [Float], shape: [Int]? = nil, device: MTLDevice) -> MPSGraphTensorData {
-        .init(
+        let shape = shape ?? [array.count]
+
+        assert(shape.reduce(1, *) == array.count)
+
+        return .init(
             device: .init(mtlDevice: device),
             data: array.rawData,
-            shape: (shape ?? [array.count]).nsnumbers,
+            shape: shape.nsnumbers,
             dataType: .float32
         )
     }

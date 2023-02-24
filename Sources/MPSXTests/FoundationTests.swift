@@ -30,7 +30,7 @@ final class FoundationTests: XCTestCase {
             }
         }
 
-        #if !arch(x86_64)
+        #if arch(arm64)
         XCTAssertTrue(_test(body: { (x: [Float]) in FPC._Float32_Float16(x) }, compare: { abs($0 - $1) < .ulpOfOne }))
         XCTAssertTrue(_test(body: { (x: [Float16]) in FPC._Float16_Float32(x) }, compare: { abs($0 - $1) < Float.ulpOfOne }))
         #endif
