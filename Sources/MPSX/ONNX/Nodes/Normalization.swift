@@ -36,7 +36,11 @@ extension MPSGraph {
               let beta = tensors(node.input(2))
         else { throw OnnxError.invalidInput(node.name) }
 
-        let axes: [NSNumber] = [2, 3]
+        guard let shape = input.shape, shape.count > 2 else {
+            throw OnnxError.invalidInput(node.name)
+        }
+
+        let axes = Array(2 ..< shape.count).nsnumbers
 
         let mean = mean(of: input, axes: axes, name: nil)
         let variance = variance(of: input, mean: mean, axes: axes, name: nil)
