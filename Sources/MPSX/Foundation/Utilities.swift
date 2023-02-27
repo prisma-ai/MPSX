@@ -82,7 +82,8 @@ extension [Int] {
     }
 }
 
-public extension Sequence where Element: BinaryInteger {
+extension Sequence where Element: BinaryInteger {
+    @usableFromInline
     var nsnumbers: [NSNumber] {
         map { NSNumber(value: Int($0)) }
     }

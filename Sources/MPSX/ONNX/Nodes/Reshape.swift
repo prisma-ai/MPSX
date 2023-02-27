@@ -12,7 +12,7 @@ extension MPSGraph {
         }
 
         if let shape = constants(node.input(1))?.ints {
-            return input.reshape(shape.nsnumbers)
+            return input.reshape(shape)
         }
 
         if let shape = tensors(node.input(1)) {

@@ -33,8 +33,8 @@ public extension MPSGraphTensor {
     }
 
     @inlinable
-    func reshape(_ shape: [NSNumber]) -> MPSGraphTensor {
-        operation.graph.reshape(self, shape: shape, name: nil)
+    func reshape(_ shape: [Int]) -> MPSGraphTensor {
+        operation.graph.reshape(self, shape: shape.nsnumbers, name: nil)
     }
 
     @inlinable
@@ -61,7 +61,7 @@ public extension MPSGraphTensor {
             return self
         }
 
-        return reshape(shape.map(\.intValue).squeeze(axes: axes).nsnumbers)
+        return reshape(shape.map(\.intValue).squeeze(axes: axes))
     }
 
     func unsqueeze(_ axes: [Int]) -> MPSGraphTensor {
@@ -77,7 +77,7 @@ public extension MPSGraphTensor {
             return self
         }
 
-        return reshape(shape.map(\.intValue).unsqueeze(axes: axes).nsnumbers)
+        return reshape(shape.map(\.intValue).unsqueeze(axes: axes))
     }
 
     func transpose(_ permutation: [Int]) -> MPSGraphTensor {
@@ -115,6 +115,29 @@ public extension MPSGraphTensor {
         }
 
         return output
+    }
+}
+
+public extension MPSGraphTensor {
+    @inlinable
+    func mean(axes: [Int]) -> MPSGraphTensor {
+        operation.graph.mean(of: self, axes: axes.nsnumbers, name: nil)
+    }
+
+    @inlinable
+    func variance(axes: [Int], mean: MPSGraphTensor? = nil) -> MPSGraphTensor {
+        if let mean {
+            return operation.graph.variance(of: self, mean: mean, axes: axes.nsnumbers, name: nil)
+        }
+        return operation.graph.variance(of: self, axes: axes.nsnumbers, name: nil)
+    }
+
+    @inlinable
+    func meanAndVariance(axes: [Int]) -> (mean: MPSGraphTensor, variance: MPSGraphTensor) {
+        let axes = axes.nsnumbers
+        let mean = operation.graph.mean(of: self, axes: axes, name: nil)
+        let variance = operation.graph.variance(of: self, mean: mean, axes: axes, name: nil)
+        return (mean, variance)
     }
 }
 
@@ -327,11 +350,6 @@ public extension MPSGraphTensor {
     @inlinable
     func max(axes: [Int]) -> MPSGraphTensor {
         operation.graph.reductionMaximum(with: self, axes: axes.nsnumbers, name: nil)
-    }
-
-    @inlinable
-    func mean(axes: [Int]) -> MPSGraphTensor {
-        operation.graph.mean(of: self, axes: axes.nsnumbers, name: nil)
     }
 }
 
