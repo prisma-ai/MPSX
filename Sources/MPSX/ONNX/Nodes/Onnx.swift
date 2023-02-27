@@ -80,6 +80,8 @@ extension MPSGraph {
             output = try reduceMean(node, tensors, constants)
         case "Dropout":
             output = try dropout(node, tensors, constants)
+        case "DepthToSpace":
+            output = try depthToSpace(node, tensors)
         case "Constant":
             guard let value = node.attr("value") else {
                 throw OnnxError.invalidInput(node.name)
