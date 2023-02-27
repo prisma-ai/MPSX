@@ -182,11 +182,20 @@ private extension MPSDataType {
 
 private extension MPSGraphTensorData {
     func transform(in commandBuffer: MPSCommandBuffer, _ actions: [(MPSGraphTensor) -> MPSGraphTensor]) -> MPSGraphTensorData {
-        actions.isEmpty ? self : MPSCompiledGraph(device: commandBuffer.device) {
-            [
-                "Y": actions.reduce($0.placeholder(shape: shape, dataType: dataType, name: "X")) { $1($0) },
-            ]
-        }(self, in: commandBuffer)
+        if actions.isEmpty {
+            return self
+        }
+        let graph = MPSGraph(options: .none)
+        let placeholder = graph.placeholder(shape: shape, dataType: dataType, name: nil)
+        let target = actions.reduce(placeholder) { $1($0) }
+        let result = graph.encode(
+            to: commandBuffer,
+            feeds: [placeholder: self],
+            targetTensors: [target],
+            targetOperations: nil,
+            executionDescriptor: nil
+        )[target]!
+        return result
     }
 }
 
