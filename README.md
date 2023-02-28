@@ -104,7 +104,7 @@ let texture: MTLTexture = graph.texture2DFrom(
 
 # MPSGraph DSL
 
-In addition to ONNX graphs, MPSX provides a convenient API for building [custom computational graphs](/Sources/MPSXTests/FoundationTests.swift#L16) similar to NumPy/PyTorch.
+In addition to ONNX graphs, MPSX provides a convenient API for building [custom computational graphs](/Sources/MPSXTests/FoundationTests.swift#L52-L70) similar to NumPy/PyTorch.
 
 # Links
 
