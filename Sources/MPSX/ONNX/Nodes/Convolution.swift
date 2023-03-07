@@ -88,7 +88,8 @@ extension MPSGraph {
     ) throws -> MPSGraphTensor {
         let groups = groups ?? 1
 
-        guard let strides = (strides ?? [1, 1]).pair,
+        guard let shape = input.shape,
+              let strides = (strides ?? [1, 1]).pair,
               let dilations = (dilations ?? [1, 1]).pair,
               let pads = (pads ?? [0, 0, 0, 0]).quad
         else {
@@ -148,7 +149,7 @@ extension MPSGraph {
             )
         }
 
-        let output = bias.flatMap { convolution + reshapeHW($0) } ?? convolution
+        let output = bias.flatMap { convolution + reshapeHW($0, rank: shape.count - 1) } ?? convolution
 
         return output
     }
@@ -233,7 +234,7 @@ extension MPSGraph {
             name: nil
         )
 
-        let output = bias.flatMap { convolution + reshapeHW($0) } ?? convolution
+        let output = bias.flatMap { convolution + reshapeHW($0, rank: 3) } ?? convolution
 
         return output
     }
