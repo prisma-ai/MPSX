@@ -7,11 +7,19 @@ extension MPSGraph {
         _ tensors: [String: MPSGraphTensor],
         _ constants: [String: Onnx_TensorProto]
     ) throws -> MPSGraphTensor {
-        guard let input = tensors(node.input(0)) else {
+        guard let input = tensors(node.input(0)),
+              let inputShape = input.shape
+        else {
             throw OnnxError.invalidInput(node.name)
         }
-
-        if let shape = constants(node.input(1))?.ints {
+        
+        if var shape = constants(node.input(1))?.ints {
+            // allowzero = false
+            for (index, dimm) in shape.enumerated() {
+                if dimm == 0 {
+                    shape[index] = inputShape[index].intValue
+                }
+            }
             return input.reshape(shape)
         }
 
