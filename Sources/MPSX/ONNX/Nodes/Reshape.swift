@@ -12,11 +12,11 @@ extension MPSGraph {
         else {
             throw OnnxError.invalidInput(node.name)
         }
-        
+
         if var shape = constants(node.input(1))?.ints {
             // allowzero = false
-            for (index, dimm) in shape.enumerated() {
-                if dimm == 0 {
+            for (index, dim) in shape.enumerated() {
+                if dim == 0 {
                     shape[index] = inputShape[index].intValue
                 }
             }
