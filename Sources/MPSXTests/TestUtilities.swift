@@ -3,6 +3,7 @@ import CoreGraphics
 import Metal
 import MetalKit
 import MetalPerformanceShaders
+import MPSX
 
 extension MTLCommandQueue {
     @discardableResult
@@ -42,48 +43,91 @@ extension CGImage {
 }
 
 extension MTLTexture {
-    func cgImage(colorSpace: CGColorSpace) -> CGImage? {
-        assert(pixelFormat == .rgba8Unorm)
+    func cgImage(colorSpace: CGColorSpace? = nil) -> CGImage? {
+        switch pixelFormat {
+        case .r8Unorm:
+            let rowBytes = width
+            let length = rowBytes * height
 
-        let rowBytes = width * 4
-        let length = rowBytes * height
-
-        let bytes = UnsafeMutableRawPointer.allocate(
-            byteCount: length,
-            alignment: MemoryLayout<UInt8>.alignment
-        )
-        defer { bytes.deallocate() }
-
-        getBytes(
-            bytes,
-            bytesPerRow: rowBytes,
-            from: MTLRegionMake2D(0, 0, width, height),
-            mipmapLevel: 0
-        )
-
-        guard
-            let data = CFDataCreate(
-                nil,
-                bytes.assumingMemoryBound(to: UInt8.self),
-                length
-            ),
-            let dataProvider = CGDataProvider(data: data),
-            let cgImage = CGImage(
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bitsPerPixel: 32,
-                bytesPerRow: rowBytes,
-                space: colorSpace,
-                bitmapInfo: .init(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                provider: dataProvider,
-                decode: nil,
-                shouldInterpolate: true,
-                intent: .defaultIntent
+            let bytes = UnsafeMutableRawPointer.allocate(
+                byteCount: length,
+                alignment: MemoryLayout<UInt8>.alignment
             )
-        else { return nil }
+            defer { bytes.deallocate() }
 
-        return cgImage
+            getBytes(
+                bytes,
+                bytesPerRow: rowBytes,
+                from: MTLRegionMake2D(0, 0, width, height),
+                mipmapLevel: 0
+            )
+
+            guard
+                let data = CFDataCreate(
+                    nil,
+                    bytes.assumingMemoryBound(to: UInt8.self),
+                    length
+                ),
+                let dataProvider = CGDataProvider(data: data),
+                let cgImage = CGImage(
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bitsPerPixel: 8,
+                    bytesPerRow: rowBytes,
+                    space: colorSpace ?? CGColorSpaceCreateDeviceGray(),
+                    bitmapInfo: .init(rawValue: CGImageAlphaInfo.none.rawValue),
+                    provider: dataProvider,
+                    decode: nil,
+                    shouldInterpolate: true,
+                    intent: .defaultIntent
+                )
+            else { return nil }
+
+            return cgImage
+        case .rgba8Unorm,
+             .rgba8Unorm_srgb:
+            let rowBytes = width * 4
+            let length = rowBytes * height
+
+            let bytes = UnsafeMutableRawPointer.allocate(
+                byteCount: length,
+                alignment: MemoryLayout<UInt8>.alignment
+            )
+            defer { bytes.deallocate() }
+
+            getBytes(
+                bytes,
+                bytesPerRow: rowBytes,
+                from: MTLRegionMake2D(0, 0, width, height),
+                mipmapLevel: 0
+            )
+
+            guard
+                let data = CFDataCreate(
+                    nil,
+                    bytes.assumingMemoryBound(to: UInt8.self),
+                    length
+                ),
+                let dataProvider = CGDataProvider(data: data),
+                let cgImage = CGImage(
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bitsPerPixel: 32,
+                    bytesPerRow: rowBytes,
+                    space: colorSpace ?? CGColorSpace(name: CGColorSpace.displayP3)!,
+                    bitmapInfo: .init(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                    provider: dataProvider,
+                    decode: nil,
+                    shouldInterpolate: false,
+                    intent: .defaultIntent
+                )
+            else { return nil }
+
+            return cgImage
+        default: return nil
+        }
     }
 }
 
@@ -112,6 +156,52 @@ final class GPU {
     }
 }
 
+func compare(texture: MTLTexture, with reference: MTLTexture, treshold: Float = 1e-3) -> Bool {
+    let graph = MPSCompiledGraph(device: GPU.default.device) { graph in
+        let x = graph.imagePlaceholder(
+            dataType: .float32,
+            height: reference.height,
+            width: reference.width,
+            channels: 3,
+            name: "X"
+        )
+
+        let y = graph.imagePlaceholder(
+            dataType: .float32,
+            height: reference.height,
+            width: reference.width,
+            channels: 3,
+            name: "Y"
+        )
+
+        let z = (x.mean(axes: [3]) - y.mean(axes: [3])).pow(2).mean(axes: [1, 2])
+
+        return ["Z": z]
+    }
+
+    let result = GPU.default.commandQueue.sync {
+        graph([
+            "X": .NHWC(texture: texture, matching: graph.inputs["X"]!, in: $0),
+            "Y": .NHWC(texture: reference, matching: graph.inputs["Y"]!, in: $0),
+        ], in: $0).synchronizedNDArray(in: $0)
+    }.floats
+
+    return result[0] < treshold
+}
+
+func data(bundlePath: String) throws -> Data {
+    try Data(contentsOf: Bundle.module.url(forResource: bundlePath, withExtension: nil)!)
+}
+
+func texture(bundlePath: String) async throws -> MTLTexture {
+    try await GPU.default.textureLoader.newTexture(
+        URL: .init(
+            fileURLWithPath: Bundle.module.path(forResource: bundlePath, ofType: nil)!
+        ),
+        options: [.SRGB: false]
+    )
+}
+
 func data(arg: Int) throws -> Data {
     try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[arg]))
 }
@@ -126,9 +216,7 @@ func inputTexture(arg: Int) async throws -> MTLTexture {
 }
 
 func save(texture: MTLTexture, arg: Int) throws {
-    let image = texture.cgImage(
-        colorSpace: CGColorSpace(name: CGColorSpace.displayP3)!
-    )
+    let image = texture.cgImage()
 
     try image?.jpeg()?.write(
         to: .init(
