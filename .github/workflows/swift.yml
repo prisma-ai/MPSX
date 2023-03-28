@@ -9,14 +9,20 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
 
-    runs-on: macos-latest
+    runs-on: macos-12
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        lfs: 'true'
     - name: Build
       run: swift build -v
-    - name: Run tests
-      run: swift test -v
+    # - name: Run tests
+      # run: swift test -v

@@ -46,7 +46,7 @@ final class FoundationTests: XCTestCase {
     func testCompiledGraphWithDSL() async throws {
         let gpu = GPU.default
 
-        let inputTexture = try await inputTexture(arg: 1)
+        let inputTexture = try await texture(bundlePath: "Resources/tiger.jpg")
 
         let compiledGraph = MPSCompiledGraph(device: gpu.device) { graph in
             let image = graph.imagePlaceholder(dataType: .float16, height: 1024, width: 1024, channels: 3, name: "X")
@@ -70,7 +70,7 @@ final class FoundationTests: XCTestCase {
             return ["Y": result]
         }
 
-        let texture = gpu.commandQueue.sync {
+        let outputTexture = gpu.commandQueue.sync {
             compiledGraph(.NHWC(
                 texture: inputTexture,
                 matching: compiledGraph.inputs["X"]!,
@@ -78,9 +78,9 @@ final class FoundationTests: XCTestCase {
             ), in: $0).texture2D(pixelFormat: .rgba8Unorm, converter: gpu.imageConverter, in: $0)
         }
 
-        // ⚠️ requires manual assertion
+        let reference = try await texture(bundlePath: "Resources/dsl_reference.jpg")
 
-        try save(texture: texture, arg: 2)
+        XCTAssert(compare(texture: outputTexture, with: reference))
     }
 
     /// Test MPSCompiledGraph multi input/multi output
