@@ -186,6 +186,8 @@ func compare(texture: MTLTexture, with reference: MTLTexture, treshold: Float = 
         ], in: $0).synchronizedNDArray(in: $0)
     }.floats
 
+    print(result)
+
     return result[0] < treshold
 }
 
@@ -209,7 +211,7 @@ func data(arg: Int) throws -> Data {
 func inputTexture(arg: Int) async throws -> MTLTexture {
     try await GPU.default.textureLoader.newTexture(
         URL: .init(
-            fileURLWithPath: CommandLine.arguments[arg] // ⚠️⚠️⚠️ pass the input image path as a command line argument
+            fileURLWithPath: CommandLine.arguments[arg]
         ),
         options: [.SRGB: false]
     )
@@ -220,7 +222,7 @@ func save(texture: MTLTexture, arg: Int) throws {
 
     try image?.jpeg()?.write(
         to: .init(
-            fileURLWithPath: CommandLine.arguments[arg] // ⚠️⚠️⚠️ pass the output image path as a command line argument
+            fileURLWithPath: CommandLine.arguments[arg]
         ),
         options: .atomic
     )
