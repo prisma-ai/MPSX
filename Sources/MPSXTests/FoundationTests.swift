@@ -83,6 +83,59 @@ final class FoundationTests: XCTestCase {
         XCTAssert(compare(texture: outputTexture, with: reference))
     }
 
+    /// Test image processing using MPSCompiledGraph
+    func testStencilOperator() async throws {
+        let gpu = GPU.default
+
+        let inputTexture = try await texture(bundlePath: "Resources/tiger.jpg")
+
+        let compiledGraph = MPSCompiledGraph(device: gpu.device) { graph in
+            let image = graph.imagePlaceholder(
+                dataType: .float16,
+                height: 1024,
+                width: 1024,
+                channels: 3,
+                name: "input_image"
+            )
+
+            // https://developer.apple.com/videos/play/wwdc2021/10152/?time=1489
+
+            let edges = graph.stencil(
+                withSourceTensor: image,
+                weightsTensor: graph.const([
+                    0, -1, 0,
+                    -1, 4, -1,
+                    0, -1, 0,
+                ] as [Float], shape: [1, 3, 3, 1]),
+                descriptor: .init(paddingStyle: .explicit)!,
+                name: nil
+            )
+
+            let final = edges.resize(
+                mode: .nearest,
+                layout: .NHWC,
+                height: inputTexture.height,
+                width: inputTexture.width
+            )
+
+            return ["output_image": final]
+        }
+
+        let outputTexture = gpu.commandQueue.sync {
+            compiledGraph(.NHWC(
+                texture: inputTexture,
+                matching: compiledGraph.inputs["input_image"]!,
+                in: $0
+            ), in: $0).texture2D(pixelFormat: .rgba8Unorm, converter: gpu.imageConverter, in: $0)
+        }
+
+        try save(texture: outputTexture, arg: 1)
+
+        let reference = try await texture(bundlePath: "Resources/stencil_ref.jpg")
+
+        XCTAssert(compare(texture: outputTexture, with: reference))
+    }
+
     /// Test MPSCompiledGraph multi input/multi output
     func testCompiledGraphMultipleInputsAndMultipleOutputs() async throws {
         let gpu = GPU.default

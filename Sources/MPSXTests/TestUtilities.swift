@@ -186,8 +186,6 @@ func compare(texture: MTLTexture, with reference: MTLTexture, treshold: Float = 
         ], in: $0).synchronizedNDArray(in: $0)
     }.floats
 
-    print(result)
-
     return result[0] < treshold
 }
 
