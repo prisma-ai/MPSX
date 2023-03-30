@@ -1,119 +1,58 @@
-# ONNX inference engine based on MPSGraph
+# GPU tensor framework with support for running ONNX models
 
 ![MPSX](logo.svg)
 
-✅ This framework is our production solution at ([Prisma Labs](https://prisma-ai.com)).
+MPSX is a general purpose GPU tensor framework written in Swift and based on MPSGraph. It provides a high-level API for performing efficient tensor operations on GPU, making it suitable for machine learning and other numerical computing tasks. MPSX also has the capability to run ONNX models out of the box, making it easy to integrate with existing machine learning pipelines.
 
-⚠️ It's metal based, so you should be familiar with Metal API (+ metal performance shaders).
+## Features
 
-🔎 See [tests](/Sources/MPSXTests/OnnxTests.swift) for realworld examples.
+1) GPU acceleration using Metal Performance Shaders (MPS) for efficient numerical computations
+2) Support for commonly used tensor operations such as element-wise operations, convolution, pooling, and more
+3) Support for running ONNX models out of the box, allowing for easy integration with existing models
+4) Easy-to-use API for building and running graph-based computations
 
-To run your ONNX model with MPSX you need to perform several easy steps:
+## Usage
 
-# Graph initialization
+It's important to note that while MPSX provides a more convenient API for building graph-based computations, users should still be familiar with common tensor rules and concepts. These rules include broadcasting, tensor shapes, data types, etc.
 
-### 1) Create instance of your model:
+In addition to being familiar with common tensor rules and concepts, users of MPSX should also have some familiarity with the Metal API. This is because MPSX is built on top of the Metal framework, which provides low-level access to GPU hardware.
+
+While MPSX abstracts away many of the details of working with Metal, users may still need to understand certain Metal concepts such as command buffers and textures in order to use MPSX effectively.
+
+# DSL
+
+MPSX provides a convenient DSL (Domain Specific Language) over MPSGraph to simplify the process of building graph-based computations. This DSL allows users to express computations in a more intuitive way, using operators such as + and - instead of the more verbose MPSGraph API.
+
+For example, instead of writing:
 
 ``` swift
-let model = try OnnxModel(data: <protobuf bytes>)
-```
-
-### 2) Create graph configuration:
-
-``` swift
-let config = OnnxGraphConfig(
-    inputs: [
-        "your_input1_name": .init(
-            dims: [2: 512, 3: 512], // 0,1,2,3 -> NCHW, so here we specify Height and Width
-            valuesRange: .init(-1, 1) // we assume runtime input has value range 0-1, but our model requires -1-1 range, so passing required range, MPSX automatically denormalize your input values
-        )
-    ],
-    outputs: [
-        "your_output_1_name": .init(valuesRange: .init(0, 255)), // output_1 will be normalized to 0-1 range, using actual range 0-255
-        "your_output_2_name": .init(valuesRange: .init(-1, 1)), // output_2 will be normalized to 0-1 range, using actual range -1-1
-    ],
-    tensorsDataType: .fp16 // or .fp32
+let z = graph.multiplication(
+    graph.addition(x, y, name: nil),
+    graph.constant(2, dataType: x.dataType),
+    name: nil
 )
 ```
 
-> this is a complete graph configuration example - each argument is either optional or has a default value.
-
-### 3) Create graph instance passing onnx model, metal device and configuration:
+Users can write:
 
 ``` swift
-let graph = try OnnxGraph(
-    model: model,
-    device: <metal device>,
-    config: config
-)
+let z = (x + y) * 2
 ```
 
-# Inference (graph encoding)
+# ONNX
 
-### 1) Raw inputs/outputs:
+The subset of ONNX operators supported by MPSX is primarily focused on computer vision models.
 
-``` swift
-let outputs: [MPSGraphTensorData] = graph(
-    <[String: MPSGraphTensorData]> // String key is a model corresponding input name
-    in: <MPSCommandBuffer>
-)
-```
+However, MPSX is designed to be extensible and can be easily extended to support additional ONNX operators. If you need to add support for a specific operator, you can consider contributing to the MPSX project or implementing the functionality yourself.
 
-This method requires manual data transformation from/to MPSGraphTensorData. For example:
+The full list of ONNX operators currently supported by MPSX can be found in the [Onnx.swift](/Sources/MPSX/ONNX/Nodes/Onnx.swift) file in the MPSX source code. This file contains the definitions for all supported ONNX operators and their corresponding MPSX implementations.
 
-#### texture conversion to MPSGraphTensorData
+Note that this list may change over time as MPSX continues to evolve and support for new ONNX operators is added.
 
-``` swift
-let input: MPSGraphTensorData = .NCHW(
-    texture: <MTLTexture>,
-    matching: <MPSGraphTensor>,
-    in: <MPSCommandBuffer>
-)
-```
+## Tips
 
-#### MPSGraphTensorData conversion to MPSTemporaryImage
-
-``` swift
-let image: MPSTemporaryImage = <MPSGraphTensorData>
-    .nhwc(in: <MPSCommandBuffer>)
-    .temporaryImage(in: <MPSCommandBuffer>)
-```
-
-#### raw floats from MPSGraphTensorData
-
-``` swift
-let array: MPSNDArray = <MPSGraphTensorData>.synchronizedNDArray(on: <MPSCommandBuffer>)
-
-... // finish GPU work to read floats on CPU side
-
-let floats = array.floats
-```
-
-### 2) Convenient texture-to-texture call
-
-For image-to-image neural networks MPSX provides convenient API:
-
-``` swift
-let texture: MTLTexture = graph.texture2DFrom(
-    inputTextures: [model.inputs[0].name: <MTLTexture>],
-    pixelFormat: .rgba8Unorm,
-    converter: <MPSImageConversion>,
-    in: <MPSCommandBuffer>
-)
-```
-
-# MPSGraph DSL
-
-In addition to ONNX graphs, MPSX provides a convenient API for building [custom computational graphs](/Sources/MPSXTests/FoundationTests.swift#L52-L70) similar to NumPy/PyTorch.
-
-# Links
-
-[MPSCommandBuffer explanation](https://geor.blog/mpscommandbuffer/)
-
-# Optimizations
-
-1) Use [ONNX simplifier](https://github.com/daquexian/onnx-simplifier)
-2) Use [ONNX2MPSX.py](ONNX2MPSX.py) script for weights conversion (FP 16/32) and specific MPSGraph optimizations.
+1) Use popular [ONNX simplifier](https://github.com/daquexian/onnx-simplifier) to optimize the model structure
+2) Use the [ONNX2MPSX](/ONNX2MPSX.py) script to convert the model to the MPSX format, including model weights conversion and specific MPSGraph optimizations
 
 ``` console
 for f in $(find $1 -name "*.onnx"); do
@@ -122,24 +61,30 @@ for f in $(find $1 -name "*.onnx"); do
 done;
 ```
 
-# Limitations
+# Code examples
 
-MPSX...
+1) [DSL example](/Sources/MPSXTests/FoundationTests.swift#L46)
+2) [Laplacian edge filter](/Sources/MPSXTests/FoundationTests.swift#L87)
+3) [Image MSE comparison](/Sources/MPSXTests/TestUtilities.swift#L159)
+4) [ONNX style transfer](/Sources/MPSXTests/OnnxTests.swift#L58)
+5) [ONNX image classification](/Sources/MPSXTests/OnnxTests.swift#L10)
 
-1) supports limited set of ONNX operators
-2) is PyTorch oriented - TF models converted to ONNX may not be supported
-3) is available only on iOS 15+/macOS 12+
+# Useful links
+
+1) [MPSCommandBuffer explanation](https://developer.apple.com/videos/play/wwdc2019/614/?time=1284)
+2) [MPSGraph - WWDC 2022](https://developer.apple.com/videos/play/wwdc2022/10063)
+3) [MPSGraph - WWDC 2021](https://developer.apple.com/videos/play/wwdc2021/10152)
+4) [MPSGraph - WWDC 2020](https://developer.apple.com/videos/play/wwdc2020/10677)
 
 # Installation
 
-Use SPM:
+Swift Package Manager:
 
 ``` swift
 dependencies: [
-    .package(url: "https://github.com/prisma-ai/MPSX.git", .upToNextMajor(from: "1.3.0"))
+    .package(
+        url: "https://github.com/prisma-ai/MPSX.git",
+        from: "1.7.0"
+    )
 ]
 ```
-
-# Authors
-
-* [Geor Kasapidi](https://github.com/geor-kasapidi)
