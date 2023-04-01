@@ -121,3 +121,13 @@ public final class MPSCompiledGraph {
         }
     }
 }
+
+public extension MPSCompiledGraph {
+    var input: MPSGraphTensor {
+        inputs.first!.value
+    }
+
+    var output: MPSGraphTensor {
+        outputs.first!.value
+    }
+}

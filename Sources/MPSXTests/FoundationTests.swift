@@ -73,7 +73,7 @@ final class FoundationTests: XCTestCase {
         let outputTexture = gpu.commandQueue.sync {
             compiledGraph(.NHWC(
                 texture: inputTexture,
-                matching: compiledGraph.inputs["X"]!,
+                matching: compiledGraph.input,
                 in: $0
             ), in: $0).texture2D(pixelFormat: .rgba8Unorm, converter: gpu.imageConverter, in: $0)
         }
@@ -124,7 +124,7 @@ final class FoundationTests: XCTestCase {
         let outputTexture = gpu.commandQueue.sync {
             compiledGraph(.NHWC(
                 texture: inputTexture,
-                matching: compiledGraph.inputs["input_image"]!,
+                matching: compiledGraph.input,
                 in: $0
             ), in: $0).texture2D(pixelFormat: .rgba8Unorm, converter: gpu.imageConverter, in: $0)
         }

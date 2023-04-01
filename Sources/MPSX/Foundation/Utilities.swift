@@ -247,31 +247,71 @@ public extension MPSGraphTensorData {
         return image
     }
 
+    func temporaryImage2D(
+        pixelFormat: MTLPixelFormat? = nil,
+        converter: MPSImageConversion? = nil,
+        in commandBuffer: MPSCommandBuffer
+    ) -> MPSTemporaryImage {
+        let source = temporaryImage(in: commandBuffer)
+
+        guard let pixelFormat,
+              pixelFormat != source.pixelFormat,
+              let converter
+        else {
+            return source
+        }
+
+        defer { source.readCount = 0 }
+
+        let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: pixelFormat,
+            width: source.width,
+            height: source.height,
+            mipmapped: false
+        )
+        textureDescriptor.usage = [.shaderRead, .shaderWrite]
+        textureDescriptor.storageMode = .private
+
+        let destination = MPSTemporaryImage(
+            commandBuffer: commandBuffer,
+            textureDescriptor: textureDescriptor
+        )
+        destination.readCount = .max
+
+        converter.encode(
+            commandBuffer: commandBuffer,
+            sourceTexture: source.texture,
+            destinationTexture: destination.texture
+        )
+
+        return destination
+    }
+
     func texture2D(
         pixelFormat: MTLPixelFormat,
         converter: MPSImageConversion,
         in commandBuffer: MPSCommandBuffer
     ) -> MTLTexture {
-        let image = temporaryImage(in: commandBuffer)
-        defer { image.readCount = 0 }
+        let source = temporaryImage(in: commandBuffer)
+        defer { source.readCount = 0 }
 
         let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: pixelFormat,
-            width: image.width,
-            height: image.height,
+            width: source.width,
+            height: source.height,
             mipmapped: false
         )
         textureDescriptor.usage = [.shaderRead, .shaderWrite]
 
-        let texture = commandBuffer.device.makeTexture(descriptor: textureDescriptor)!
+        let destination = commandBuffer.device.makeTexture(descriptor: textureDescriptor)!
 
         converter.encode(
             commandBuffer: commandBuffer,
-            sourceTexture: image.texture,
-            destinationTexture: texture
+            sourceTexture: source.texture,
+            destinationTexture: destination
         )
 
-        return texture
+        return destination
     }
 
     func synchronizedNDArray(in commandBuffer: MTLCommandBuffer) -> MPSNDArray {
@@ -384,7 +424,7 @@ public extension MPSGraphTensorData {
     ) -> MPSGraphTensorData {
         NHWC(
             texture: texture,
-            tensorShape: (tensor.shape ?? []).map(\.intValue),
+            tensorShape: tensor.ishape,
             tensorDataType: tensor.dataType,
             resizeMode: resizeMode,
             in: commandBuffer
@@ -400,7 +440,7 @@ public extension MPSGraphTensorData {
     ) -> MPSGraphTensorData {
         NCHW(
             texture: texture,
-            tensorShape: (tensor.shape ?? []).map(\.intValue),
+            tensorShape: tensor.ishape,
             tensorDataType: tensor.dataType,
             resizeMode: resizeMode,
             in: commandBuffer
@@ -412,5 +452,11 @@ public extension MPSGraph {
     convenience init(options: MPSGraphOptions) {
         self.init()
         self.options = options
+    }
+}
+
+public extension MPSGraphTensor {
+    var ishape: [Int] {
+        shape?.map(\.intValue) ?? []
     }
 }

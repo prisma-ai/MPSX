@@ -78,6 +78,14 @@ public final class OnnxGraph {
         executable.outputs
     }
 
+    public var input: MPSGraphTensor {
+        executable.input
+    }
+
+    public var output: MPSGraphTensor {
+        executable.output
+    }
+
     /// single input -> single output
     public func callAsFunction(
         _ input: MPSGraphTensorData,
@@ -126,14 +134,30 @@ public extension OnnxGraph {
         let _: [String: MPSGraphTensorData] = executable(randomInputs, in: commandBuffer)
     }
 
+    func inputsFromTextures(_ dict: [String: MTLTexture], in commandBuffer: MPSCommandBuffer) -> [String: MPSGraphTensorData] {
+        dict.reduce(into: [:]) {
+            if let input = self.inputs[$1.key] {
+                $0[$1.key] = .NCHW(texture: $1.value, matching: input, in: commandBuffer)
+            } else {
+                assertionFailure("no input with key \($1.key)")
+            }
+        }
+    }
+
     func imageFrom(
         _ inputTexture: MTLTexture,
+        pixelFormat: MTLPixelFormat? = nil,
+        converter: MPSImageConversion? = nil,
         in commandBuffer: MPSCommandBuffer
     ) throws -> MPSTemporaryImage {
         try self(
-            .NCHW(texture: inputTexture, matching: inputs.first!.value, in: commandBuffer),
+            .NCHW(texture: inputTexture, matching: input, in: commandBuffer),
             in: commandBuffer
-        ).nhwc(in: commandBuffer).temporaryImage(in: commandBuffer)
+        ).nhwc(in: commandBuffer).temporaryImage2D(
+            pixelFormat: pixelFormat,
+            converter: converter,
+            in: commandBuffer
+        )
     }
 
     func texture2DFrom(
@@ -143,8 +167,22 @@ public extension OnnxGraph {
         in commandBuffer: MPSCommandBuffer
     ) throws -> MTLTexture {
         try self(
-            .NCHW(texture: inputTexture, matching: inputs.first!.value, in: commandBuffer),
+            .NCHW(texture: inputTexture, matching: input, in: commandBuffer),
             in: commandBuffer
-        ).nhwc(in: commandBuffer).texture2D(pixelFormat: pixelFormat, converter: converter, in: commandBuffer)
+        ).nhwc(in: commandBuffer).texture2D(
+            pixelFormat: pixelFormat,
+            converter: converter,
+            in: commandBuffer
+        )
+    }
+
+    func arrayFrom(
+        _ inputTexture: MTLTexture,
+        in commandBuffer: MPSCommandBuffer
+    ) throws -> MPSNDArray {
+        try self(
+            .NCHW(texture: inputTexture, matching: input, in: commandBuffer),
+            in: commandBuffer
+        ).synchronizedNDArray(in: commandBuffer)
     }
 }
