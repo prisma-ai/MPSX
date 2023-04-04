@@ -189,6 +189,8 @@ func compare(texture: MTLTexture, with reference: MTLTexture, treshold: Float = 
     return result[0] < treshold
 }
 
+let testResourcesPath = "TestResources"
+
 func data(bundlePath: String) throws -> Data {
     try Data(contentsOf: Bundle.module.url(forResource: bundlePath, withExtension: nil)!)
 }

@@ -28,7 +28,7 @@ let package = Package(
         .testTarget(
             name: "MPSXTests",
             dependencies: ["MPSX"],
-            resources: [.copy("Resources")]
+            resources: [.copy("TestResources")]
         ),
     ]
 )

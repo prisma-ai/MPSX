@@ -46,7 +46,7 @@ final class FoundationTests: XCTestCase {
     func testCompiledGraphWithDSL() async throws {
         let gpu = GPU.default
 
-        let inputTexture = try await texture(bundlePath: "Resources/tiger.jpg")
+        let inputTexture = try await texture(bundlePath: "\(testResourcesPath)/tiger.jpg")
 
         let compiledGraph = MPSCompiledGraph(device: gpu.device) { graph in
             let image = graph.imagePlaceholder(dataType: .float16, height: 1024, width: 1024, channels: 3, name: "X")
@@ -78,7 +78,7 @@ final class FoundationTests: XCTestCase {
             ), in: $0).texture2D(pixelFormat: .rgba8Unorm, converter: gpu.imageConverter, in: $0)
         }
 
-        let reference = try await texture(bundlePath: "Resources/dsl_reference.jpg")
+        let reference = try await texture(bundlePath: "\(testResourcesPath)/dsl_reference.jpg")
 
         XCTAssert(compare(texture: outputTexture, with: reference))
     }
@@ -87,7 +87,7 @@ final class FoundationTests: XCTestCase {
     func testStencilOperator() async throws {
         let gpu = GPU.default
 
-        let inputTexture = try await texture(bundlePath: "Resources/tiger.jpg")
+        let inputTexture = try await texture(bundlePath: "\(testResourcesPath)/tiger.jpg")
 
         let compiledGraph = MPSCompiledGraph(device: gpu.device) { graph in
             let image = graph.imagePlaceholder(
@@ -131,7 +131,7 @@ final class FoundationTests: XCTestCase {
 
         try save(texture: outputTexture, arg: 1)
 
-        let reference = try await texture(bundlePath: "Resources/stencil_ref.jpg")
+        let reference = try await texture(bundlePath: "\(testResourcesPath)/stencil_ref.jpg")
 
         XCTAssert(compare(texture: outputTexture, with: reference))
     }

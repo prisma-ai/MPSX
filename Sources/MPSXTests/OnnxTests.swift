@@ -8,9 +8,9 @@ import XCTest
 final class OnnxTests: XCTestCase {
     // https://github.com/onnx/models/tree/main/vision/classification/shufflenet
     func testShuffleNet() async throws {
-        let model = try OnnxModel(data: data(bundlePath: "Resources/shufflenet-v2-12.onnx"))
-        let labels = try String(data: data(bundlePath: "Resources/imagenet_classes.txt"), encoding: .utf8)!.split(separator: "\n")
-        let inputTexture = try await texture(bundlePath: "Resources/tiger.jpg")
+        let model = try OnnxModel(data: data(bundlePath: "\(testResourcesPath)/shufflenet-v2-12.onnx"))
+        let labels = try String(data: data(bundlePath: "\(testResourcesPath)/imagenet_classes.txt"), encoding: .utf8)!.split(separator: "\n")
+        let inputTexture = try await texture(bundlePath: "\(testResourcesPath)/tiger.jpg")
 
         let gpu = GPU.default
 
@@ -56,8 +56,8 @@ final class OnnxTests: XCTestCase {
 
     // https://github.com/onnx/models/tree/main/vision/style_transfer/fast_neural_style
     func testStyleTransfer() async throws {
-        let model = try OnnxModel(data: data(bundlePath: "Resources/candy-8.onnx"))
-        let inputImage = try await texture(bundlePath: "Resources/tiger.jpg")
+        let model = try OnnxModel(data: data(bundlePath: "\(testResourcesPath)/candy-8.onnx"))
+        let inputImage = try await texture(bundlePath: "\(testResourcesPath)/tiger.jpg")
 
         let gpu = GPU.default
 
@@ -100,7 +100,7 @@ final class OnnxTests: XCTestCase {
             )
         }
 
-        let reference = try await texture(bundlePath: "Resources/candy-8-tiger.jpg")
+        let reference = try await texture(bundlePath: "\(testResourcesPath)/candy-8-tiger.jpg")
 
         XCTAssert(compare(texture: outputTexture, with: reference))
     }
