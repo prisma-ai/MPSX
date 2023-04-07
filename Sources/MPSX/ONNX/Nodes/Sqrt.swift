@@ -8,7 +8,7 @@ extension MPSGraph {
     ) throws -> MPSGraphTensor {
         guard let input = tensors(node.input(0))
         else { throw OnnxError.invalidInput(node.name) }
-        
+
         return input.squareRoot()
     }
 }

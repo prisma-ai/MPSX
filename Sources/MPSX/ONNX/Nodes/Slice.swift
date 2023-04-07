@@ -12,9 +12,9 @@ extension MPSGraph {
               let starts = constants(node.input(1))?.ints,
               let ends = constants(node.input(2))?.ints
         else { throw OnnxError.invalidInput(node.name) }
-        
+
         let steps = constants(node.input(4))?.ints
-        
+
         var shapedStart = [Int]()
         var shapedEnds = [Int]()
         var shapedStrides = [Int]()
@@ -36,7 +36,7 @@ extension MPSGraph {
             shapedEnds = ends
             shapedStrides = steps ?? .init(repeating: 1, count: starts.count)
         }
-        
+
         let output = sliceTensor(
             input,
             starts: shapedStart.nsnumbers,
@@ -44,7 +44,7 @@ extension MPSGraph {
             strides: shapedStrides.nsnumbers,
             name: nil
         )
-        
+
         return output
     }
 }

@@ -5,7 +5,7 @@ extension MPSGraph {
     func gatherElements(
         _ node: Onnx_NodeProto,
         _ tensors: [String: MPSGraphTensor],
-        _ constants: [String: Onnx_TensorProto]
+        _: [String: Onnx_TensorProto]
     ) throws -> MPSGraphTensor {
         guard let input = tensors(node.input(0)),
               let indicies = tensors(node.input(1))

@@ -10,7 +10,7 @@ extension MPSGraph {
         guard let input = tensors(node.input(0)),
               let shape = constants(node.input(1))?.ints
         else { throw OnnxError.invalidInput(node.name) }
-        
+
         let output = input * constant(1.0, shape: shape.nsnumbers, dataType: input.dataType)
         return output
     }

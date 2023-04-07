@@ -15,7 +15,7 @@ extension MPSGraph {
         var output = input.mean(axes: axes)
 
         // TODO: support noop_with_empty_axes
-        
+
         if !keepDims {
             output = output.squeeze(axes)
         }
