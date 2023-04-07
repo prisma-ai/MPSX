@@ -149,7 +149,7 @@ extension MPSGraph {
             )
         }
 
-        let output = bias.flatMap { convolution + reshapeHW($0, rank: shape.count - 1) } ?? convolution
+        let output = bias.flatMap { convolution + appendDimmsIfNeeded(to: $0, count: shape.count - 2) } ?? convolution
 
         return output
     }
@@ -234,7 +234,7 @@ extension MPSGraph {
             name: nil
         )
 
-        let output = bias.flatMap { convolution + reshapeHW($0, rank: 3) } ?? convolution
+        let output = bias.flatMap { convolution + appendDimmsIfNeeded(to: $0, count: 2) } ?? convolution
 
         return output
     }
