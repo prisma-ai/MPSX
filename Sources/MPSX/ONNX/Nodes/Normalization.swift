@@ -7,18 +7,20 @@ extension MPSGraph {
         _ tensors: [String: MPSGraphTensor]
     ) throws -> MPSGraphTensor {
         guard let input = tensors(node.input(0)),
+              let shape = input.shape,
               let gamma = tensors(node.input(1)),
               let beta = tensors(node.input(2)),
               let mean = tensors(node.input(3)),
               let variance = tensors(node.input(4))
         else { throw OnnxError.invalidInput(node.name) }
 
+        let extraDimms = shape.count - 2
         let output = normalize(
             input,
-            mean: reshapeHW(mean),
-            variance: reshapeHW(variance),
-            gamma: reshapeHW(gamma),
-            beta: reshapeHW(beta),
+            mean: appendDimmsIfNeeded(to: mean, count: extraDimms),
+            variance: appendDimmsIfNeeded(to: variance, count: extraDimms),
+            gamma: appendDimmsIfNeeded(to: gamma, count: extraDimms),
+            beta: appendDimmsIfNeeded(to: beta, count: extraDimms),
             epsilon: node.attr(f: "epsilon") ?? 1e-05,
             name: nil
         )
@@ -42,12 +44,13 @@ extension MPSGraph {
 
         let (mean, variance) = input.meanAndVariance(axes: Array(2 ..< shape.count))
 
+        let extraDimms = shape.count - 2
         let output = normalize(
             input,
             mean: mean,
             variance: variance,
-            gamma: reshapeHW(gamma),
-            beta: reshapeHW(beta),
+            gamma: appendDimmsIfNeeded(to: gamma, count: extraDimms),
+            beta: appendDimmsIfNeeded(to: beta, count: extraDimms),
             epsilon: node.attr(f: "epsilon") ?? 1e-05,
             name: nil
         )
