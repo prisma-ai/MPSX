@@ -422,6 +422,11 @@ public extension MPSGraphTensor {
 
 public extension MPSGraph {
     @inlinable
+    func placeholder(ishape: [Int], dataType: MPSDataType, name: String) -> MPSGraphTensor {
+        placeholder(shape: ishape.nsnumbers, dataType: dataType, name: name)
+    }
+
+    @inlinable
     func imagePlaceholder(
         dataType: MPSDataType,
         channels: Int,
