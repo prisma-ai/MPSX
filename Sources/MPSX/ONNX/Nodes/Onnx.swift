@@ -78,6 +78,10 @@ extension MPSGraph {
             output = try slice(node, tensors, constants)
         case "ReduceMean":
             output = try reduceMean(node, tensors, constants)
+        case "ReduceSum":
+            output = try reduceSum(node, tensors, constants)
+        case "ReduceL2":
+            output = try reduceL2(node, tensors, constants)
         case "Dropout":
             output = try dropout(node, tensors, constants)
         case "DepthToSpace":
