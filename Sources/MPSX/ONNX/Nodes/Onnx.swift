@@ -20,6 +20,20 @@ extension MPSGraph {
             output = try arithmetic(op: .mul, node, tensors)
         case "Div":
             output = try arithmetic(op: .div, node, tensors)
+        case "Sqrt":
+            output = try sqrt(node, tensors)
+        case "Exp":
+            output = try exp(node, tensors)
+        case "Log":
+            output = try log(node, tensors)
+        case "Floor":
+            output = try floor(node, tensors)
+        case "Less":
+            output = try less(node, tensors)
+        case "Greater":
+            output = try greater(node, tensors)
+        case "Where":
+            output = try whereOp(node, tensors)
         case "BatchNormalization":
             output = try batchNorm(node, tensors)
         case "InstanceNormalization":
@@ -97,6 +111,18 @@ extension MPSGraph {
         case "Cast",
              "Clip":
             output = try passthrough(node, tensors)
+        case "Pow":
+            output = try pow(node, tensors)
+        case "Tile":
+            output = try tile(node, tensors, constants)
+        case "Gather":
+            output = try gather(node, tensors, constants)
+        case "GatherElements":
+            output = try gatherElements(node, tensors, constants)
+        case "Expand":
+            output = try expand(node, tensors, constants)
+        case "Neg":
+            output = try neg(node, tensors)
         case "Split":
             try split(node, tensors).forEach {
                 tensors[$0.0] = $0.1
