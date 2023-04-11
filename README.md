@@ -64,7 +64,7 @@ done;
 # Code examples
 
 1) [DSL example](/Sources/MPSXTests/FoundationTests.swift#L46)
-2) [Laplacian edge filter](/Sources/MPSXTests/FoundationTests.swift#L87)
+2) [Laplacian edge filter](/Sources/MPSXTests/FoundationTests.swift#L86)
 3) [Image MSE comparison](/Sources/MPSXTests/TestUtilities.swift#L159)
 4) [ONNX style transfer](/Sources/MPSXTests/OnnxTests.swift#L58)
 5) [ONNX image classification](/Sources/MPSXTests/OnnxTests.swift#L10)

@@ -49,7 +49,13 @@ final class FoundationTests: XCTestCase {
         let inputTexture = try await texture(bundlePath: "\(testResourcesPath)/tiger.jpg")
 
         let compiledGraph = MPSCompiledGraph(device: gpu.device) { graph in
-            let image = graph.imagePlaceholder(dataType: .float16, height: 1024, width: 1024, channels: 3, name: "X")
+            let image = graph.imagePlaceholder(
+                dataType: .float32,
+                height: inputTexture.height,
+                width: inputTexture.width,
+                channels: 3,
+                name: "X"
+            )
 
             let mid = image.sum(axes: [3]) / 3
 
@@ -58,14 +64,7 @@ final class FoundationTests: XCTestCase {
 
             let normalized = (mid - min) / (max - min)
 
-            let resized = normalized.resize(
-                mode: .nearest,
-                layout: .NHWC,
-                height: inputTexture.height,
-                width: inputTexture.width
-            )
-
-            let result = (resized * 3).round() / 3
+            let result = (normalized * 3).round() / 3
 
             return ["Y": result]
         }
