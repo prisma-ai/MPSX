@@ -28,6 +28,8 @@ extension MPSGraph {
             output = try log(node, tensors)
         case "Floor":
             output = try floor(node, tensors)
+        case "Equal":
+            output = try equal(node, tensors)
         case "Less":
             output = try less(node, tensors)
         case "Greater":
@@ -100,14 +102,23 @@ extension MPSGraph {
             output = try dropout(node, tensors, constants)
         case "DepthToSpace":
             output = try depthToSpace(node, tensors)
-        case "Constant":
+        case "Constant",
+             "ConstantOfShape":
             guard let value = node.attr("value") else {
                 throw OnnxError.invalidInput(node.name)
             }
+
             node.output.forEach {
                 constants[$0] = value.t
             }
-            output = try constant(value.t, targetDataType: tensorsDataType)
+
+            let x = try constant(value.t, targetDataType: tensorsDataType)
+
+            if let shape = tensors(node.input(0)) {
+                output = reshape(x, shapeTensor: shape, name: nil)
+            } else {
+                output = x
+            }
         case "Cast",
              "Clip":
             output = try passthrough(node, tensors)
