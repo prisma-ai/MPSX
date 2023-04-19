@@ -50,6 +50,7 @@ def convert_onnx_to_mpsx(model, halfs):
         onnx.helper.make_graph(
             nodes=model.graph.node,
             name=model.graph.name,
+            value_info=model.graph.value_info,
             inputs=_fp32_to_fp16_info(
                 model.graph.input) if halfs else model.graph.input,
             outputs=_fp32_to_fp16_info(
