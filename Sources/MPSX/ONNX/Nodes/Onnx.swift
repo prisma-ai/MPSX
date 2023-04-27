@@ -108,9 +108,10 @@ extension MPSGraph {
                 constants[$0] = value.t
             }
             output = try constant(value.t, targetDataType: tensorsDataType)
-        case "Cast",
-             "Clip":
+        case "Cast":
             output = try passthrough(node, tensors)
+        case "Clip":
+            output = try clip(node, tensors)
         case "Pow":
             output = try pow(node, tensors)
         case "Tile":
