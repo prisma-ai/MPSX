@@ -9,7 +9,7 @@ def _fp32_to_fp16_info(tensor_infos):
         onnx.helper.make_tensor_value_info(
             ti.name,
             10,
-            [dim.dim_value for dim in ti.type.tensor_type.shape.dim]
+            [dim.dim_value or dim.dim_param for dim in ti.type.tensor_type.shape.dim]
         ) if ti.type.tensor_type.elem_type == 1 else ti for ti in tensor_infos
     ]
 
