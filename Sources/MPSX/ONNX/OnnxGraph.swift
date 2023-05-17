@@ -8,10 +8,12 @@ public final class OnnxGraph {
     ///   - model: onnx model
     ///   - device: metal device for graph compilation
     ///   - config: graph building configuration
+    ///   - transformOutputs: outputs postprocessing logic
     public init(
         model: OnnxModel,
         device: MTLDevice,
-        config: OnnxGraphConfig = .init()
+        config: OnnxGraphConfig = .init(),
+        transformOutputs: (([String: MPSGraphTensor]) -> [String: MPSGraphTensor])? = nil
     ) throws {
         executable = try MPSCompiledGraph(device: device) { mpsGraph in
             let onnxGraph = model.proto.graph
@@ -55,7 +57,7 @@ public final class OnnxGraph {
                 throw OnnxError.unsupportedOperator(node.opType)
             }
 
-            return try model.outputs.reduce(into: [:]) {
+            var outputs: [String: MPSGraphTensor] = try model.outputs.reduce(into: [:]) {
                 guard let tensor = tensors[$1] else {
                     throw OnnxError.invalidModel(reason: "tensor named \($1) not found")
                 }
@@ -65,6 +67,12 @@ public final class OnnxGraph {
                     valuesRange: config.outputs[$1]?.valuesRange
                 )
             }
+
+            if let transformOutputs {
+                outputs = transformOutputs(outputs)
+            }
+
+            return outputs
         }
     }
 
