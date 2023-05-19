@@ -89,6 +89,45 @@ extension Sequence where Element: BinaryInteger {
     }
 }
 
+extension MPSGraphResizeMode: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .nearest: return "nearest"
+        case .bilinear: return "bilinear"
+        @unknown default: return "?"
+        }
+    }
+}
+
+extension MPSDataType: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .invalid: return "invalid"
+        case .floatBit: return "floatBit"
+        case .float32: return "float32"
+        case .float16: return "float16"
+        case .complexBit: return "complexBit"
+        case .complexFloat32: return "complexFloat32"
+        case .complexFloat16: return "complexFloat16"
+        case .signedBit: return "signedBit"
+        case .int8: return "int8"
+        case .int16: return "int16"
+        case .int32: return "int32"
+        case .int64: return "int64"
+        case .uInt8: return "uInt8"
+        case .uInt16: return "uInt16"
+        case .uInt32: return "uInt32"
+        case .uInt64: return "uInt64"
+        case .alternateEncodingBit: return "alternateEncodingBit"
+        case .bool: return "bool"
+        case .normalizedBit: return "normalizedBit"
+        case .unorm1: return "unorm1"
+        case .unorm8: return "unorm8"
+        @unknown default: return "?"
+        }
+    }
+}
+
 private extension MPSNDArray {
     var shape: [Int] {
         (0 ..< numberOfDimensions).map(length(ofDimension:))
@@ -180,25 +219,6 @@ private extension MPSDataType {
     }
 }
 
-private extension MPSGraphTensorData {
-    func transform(in commandBuffer: MPSCommandBuffer, _ actions: [(MPSGraphTensor) -> MPSGraphTensor]) -> MPSGraphTensorData {
-        if actions.isEmpty {
-            return self
-        }
-        let graph = MPSGraph(options: .none)
-        let placeholder = graph.placeholder(shape: shape, dataType: dataType, name: nil)
-        let target = actions.reduce(placeholder) { $1($0) }
-        let result = graph.encode(
-            to: commandBuffer,
-            feeds: [placeholder: self],
-            targetTensors: [target],
-            targetOperations: nil,
-            executionDescriptor: nil
-        )[target]!
-        return result
-    }
-}
-
 public extension MPSGraphTensorData {
     static func floats(_ array: [Float], shape: [Int]? = nil, device: MTLDevice) -> MPSGraphTensorData {
         let shape = shape ?? [array.count]
@@ -214,9 +234,9 @@ public extension MPSGraphTensorData {
     }
 
     func nhwc(in commandBuffer: MPSCommandBuffer) -> MPSGraphTensorData {
-        transform(in: commandBuffer, [
-            { $0.transpose([0, 2, 3, 1]) },
-        ])
+        TensorConverter.default.transform(self, [
+            .init(name: "transpose_nhwc", action: { $0.transpose([0, 2, 3, 1]) }),
+        ], in: commandBuffer)
     }
 
     func temporaryImage(in commandBuffer: MPSCommandBuffer) -> MPSTemporaryImage {
@@ -362,27 +382,27 @@ public extension MPSGraphTensorData {
 
         let dataShape = data.shape.map(\.intValue)
 
-        var transformers: [(MPSGraphTensor) -> MPSGraphTensor] = []
+        var steps: [TensorConverter.Step] = []
 
         if dataShape[1] != h || dataShape[2] != w {
-            transformers.append {
+            steps.append(.init(name: "resize_\(resizeMode)_\(h)_\(w)", action: {
                 $0.resize(mode: resizeMode, layout: .NHWC, height: h, width: w)
-            }
+            }))
         }
 
         if channelsFirst {
-            transformers.append {
+            steps.append(.init(name: "transpose_nchw", action: {
                 $0.transpose([0, 3, 1, 2])
-            }
+            }))
         }
 
         if data.dataType != tensorDataType {
-            transformers.append {
+            steps.append(.init(name: "cast_\(tensorDataType)", action: {
                 $0.cast(to: tensorDataType)
-            }
+            }))
         }
 
-        return data.transform(in: commandBuffer, transformers)
+        return TensorConverter.default.transform(data, steps, in: commandBuffer)
     }
 }
 
