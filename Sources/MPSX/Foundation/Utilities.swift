@@ -390,15 +390,15 @@ public extension MPSGraphTensorData {
             }))
         }
 
-        if channelsFirst {
-            steps.append(.init(name: "transpose_nchw", action: {
-                $0.transpose([0, 3, 1, 2])
-            }))
-        }
-
         if data.dataType != tensorDataType {
             steps.append(.init(name: "cast_\(tensorDataType)", action: {
                 $0.cast(to: tensorDataType)
+            }))
+        }
+
+        if channelsFirst {
+            steps.append(.init(name: "transpose_nchw", action: {
+                $0.transpose([0, 3, 1, 2])
             }))
         }
 
