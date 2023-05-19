@@ -33,13 +33,17 @@ final class OnnxTests: XCTestCase {
             )
         }
 
-        func predict() -> MPSGraphTensorData {
+        @Sendable func predict() -> MPSGraphTensorData {
             gpu.commandQueue.sync {
                 try! graph(input, in: $0)
             }
         }
 
         measure {
+            _ = predict()
+        }
+
+        DispatchQueue.concurrentPerform(iterations: 100) { _ in
             _ = predict()
         }
 
@@ -80,13 +84,17 @@ final class OnnxTests: XCTestCase {
             )
         }
 
-        func styleTransfer() -> MPSGraphTensorData {
+        @Sendable func styleTransfer() -> MPSGraphTensorData {
             gpu.commandQueue.sync {
                 try! graph(input, in: $0)
             }
         }
 
         measure {
+            _ = styleTransfer()
+        }
+
+        DispatchQueue.concurrentPerform(iterations: 100) { _ in
             _ = styleTransfer()
         }
 

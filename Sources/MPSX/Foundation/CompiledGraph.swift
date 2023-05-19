@@ -111,8 +111,10 @@ public final class MPSCompiledGraph {
     }
 
     private func encode(to commandBuffer: MPSCommandBuffer, inputs: [MPSGraphTensorData]) -> [MPSGraphTensorData] {
-        commandBuffer.addCompletedHandler { _ in
-            _ = self // keep self alive until completion
+        defer {
+            commandBuffer.rootCommandBuffer.addCompletedHandler { _ in
+                _ = self // keep self alive until completion
+            }
         }
 
         return autoreleasepool {
