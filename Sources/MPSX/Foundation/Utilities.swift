@@ -488,3 +488,11 @@ public extension MPSGraphTensor {
         shape?.map(\.intValue) ?? []
     }
 }
+
+public extension MPSCommandBuffer {
+    func commitAndWait() {
+        let _rootCommandBuffer = rootCommandBuffer
+        commitAndContinue()
+        _rootCommandBuffer.waitUntilCompleted()
+    }
+}

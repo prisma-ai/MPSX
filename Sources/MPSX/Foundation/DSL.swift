@@ -412,8 +412,8 @@ public extension MPSGraphTensor {
             self,
             size: [height, width].nsnumbers,
             mode: mode,
-            centerResult: true,
-            alignCorners: false,
+            centerResult: false,
+            alignCorners: true,
             layout: layout,
             name: nil
         )

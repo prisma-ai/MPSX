@@ -21,7 +21,7 @@ extension MPSGraph {
         }
 
         return input.resize(
-            mode: node.attr(s: "mode") == "linear" ? .bilinear : .nearest,
+            mode: node.attr(s: "mode").contains("linear") ? .bilinear : .nearest,
             layout: .NCHW,
             height: Int((Float(shape.2) * scales.0).rounded()),
             width: Int((Float(shape.3) * scales.1).rounded())
