@@ -235,7 +235,7 @@ public extension MPSGraphTensorData {
 
     func nhwc(in commandBuffer: MPSCommandBuffer) -> MPSGraphTensorData {
         TensorConverter.default.transform(self, [
-            .init(name: "transpose_nhwc", action: { $0.transpose([0, 2, 3, 1]) }),
+            .init(name: "transpose_nhwc", action: { $0.toNHWC() }),
         ], in: commandBuffer)
     }
 
@@ -398,7 +398,7 @@ public extension MPSGraphTensorData {
 
         if channelsFirst {
             steps.append(.init(name: "transpose_nchw", action: {
-                $0.transpose([0, 3, 1, 2])
+                $0.toNCHW()
             }))
         }
 
