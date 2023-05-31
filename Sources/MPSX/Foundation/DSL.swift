@@ -351,6 +351,16 @@ public extension MPSGraphTensor {
     func max(axes: [Int]) -> MPSGraphTensor {
         operation.graph.reductionMaximum(with: self, axes: axes.nsnumbers, name: nil)
     }
+
+    @inlinable
+    func argmax(axis: Int) -> MPSGraphTensor {
+        operation.graph.reductionArgMaximum(with: self, axis: axis, name: nil)
+    }
+
+    @inlinable
+    func argmin(axis: Int) -> MPSGraphTensor {
+        operation.graph.reductionArgMinimum(with: self, axis: axis, name: nil)
+    }
 }
 
 public extension MPSGraphTensor {
@@ -385,6 +395,11 @@ public extension MPSGraphTensor {
     }
 
     @inlinable
+    func square() -> MPSGraphTensor {
+        operation.graph.square(with: self, name: nil)
+    }
+
+    @inlinable
     func ceil() -> MPSGraphTensor {
         operation.graph.ceil(with: self, name: nil)
     }
@@ -401,6 +416,48 @@ public extension MPSGraphTensor {
 }
 
 public extension MPSGraphTensor {
+    @inlinable
+    func pad(
+        mode: MPSGraphPaddingMode,
+        top: Int,
+        bottom: Int,
+        left: Int,
+        right: Int,
+        constant: Double = .zero
+    ) -> MPSGraphTensor {
+        operation.graph.padTensor(
+            self,
+            with: mode,
+            leftPadding: [0, 0, left, top].nsnumbers,
+            rightPadding: [0, 0, right, bottom].nsnumbers,
+            constantValue: constant,
+            name: nil
+        )
+    }
+
+    @inlinable
+    func slice(
+        axis: Int,
+        start: Int,
+        length: Int
+    ) -> MPSGraphTensor {
+        operation.graph.sliceTensor(
+            self,
+            dimension: axis,
+            start: start,
+            length: length,
+            name: nil
+        )
+    }
+
+    @available(iOS 16.0, macOS 13.0, *)
+    func sort(axis: Int, descending: Bool = false) -> MPSGraphTensor {
+        if descending {
+            return operation.graph.sort(self, axis: axis, descending: true, name: nil)
+        }
+        return operation.graph.sort(self, axis: axis, name: nil)
+    }
+
     @inlinable
     func resize(
         mode: MPSGraphResizeMode,

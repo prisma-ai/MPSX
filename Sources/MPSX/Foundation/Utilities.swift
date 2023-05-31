@@ -342,18 +342,16 @@ public extension MPSGraphTensorData {
 }
 
 private extension MPSImage {
-    func tensorData(dataType: MPSDataType, in commandBuffer: MPSCommandBuffer) -> MPSGraphTensorData {
-        if #available(iOS 16.4, macOS 13.3, *) {
-            return .init(batchRepresentation())
-        }
-
+    func toNDArray(dataType: MPSDataType, in commandBuffer: MPSCommandBuffer) -> MPSTemporaryNDArray {
         let array = MPSTemporaryNDArray(
             commandBuffer: commandBuffer,
             descriptor: .init(
                 dataType: dataType,
                 shape: [numberOfImages, height, width, featureChannels].nsnumbers
             )
-        ) // no readCount = 0 here -> next steps in pipeline will do this automatically
+        )
+
+        array.readCount = .max
 
         array.importData(
             with: commandBuffer,
@@ -361,7 +359,7 @@ private extension MPSImage {
             offset: .init()
         )
 
-        return .init(array)
+        return array
     }
 }
 
@@ -378,7 +376,9 @@ public extension MPSGraphTensorData {
 
         precondition(tensorShape.count == 4 && tensorShape[0] == 1 && image.featureChannels == c)
 
-        let data = image.tensorData(dataType: tensorDataType, in: commandBuffer)
+        let ndArray = image.toNDArray(dataType: tensorDataType, in: commandBuffer)
+
+        let data = MPSGraphTensorData(ndArray)
 
         let dataShape = data.shape.map(\.intValue)
 
