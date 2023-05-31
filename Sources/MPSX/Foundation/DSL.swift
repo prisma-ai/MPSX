@@ -116,6 +116,18 @@ public extension MPSGraphTensor {
 
         return output
     }
+
+    @inlinable
+    func toNHWC() -> MPSGraphTensor {
+        assert(shape?.count == 4, "Operation \(#function) should be performed on 4 dimensional tensors")
+        return transpose([0, 2, 3, 1])
+    }
+
+    @inlinable
+    func toNCHW() -> MPSGraphTensor {
+        assert(shape?.count == 4, "Operation \(#function) should be performed on 4 dimensional tensors")
+        return transpose([0, 3, 1, 2])
+    }
 }
 
 public extension MPSGraphTensor {
