@@ -435,13 +435,14 @@ public extension MPSGraphTensor {
         bottom: Int,
         left: Int,
         right: Int,
-        constant: Double = .zero
+        constant: Double = .zero,
+        channelsFirst: Bool = true
     ) -> MPSGraphTensor {
         operation.graph.padTensor(
             self,
             with: mode,
-            leftPadding: [0, 0, left, top].nsnumbers,
-            rightPadding: [0, 0, right, bottom].nsnumbers,
+            leftPadding: channelsFirst ? [0, 0, top, left].nsnumbers : [0, top, left, 0].nsnumbers,
+            rightPadding: channelsFirst ? [0, 0, bottom, right].nsnumbers : [0, bottom, right, 0].nsnumbers,
             constantValue: constant,
             name: nil
         )
