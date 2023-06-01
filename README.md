@@ -84,7 +84,7 @@ Swift Package Manager:
 dependencies: [
     .package(
         url: "https://github.com/prisma-ai/MPSX.git",
-        from: "1.7.5"
+        from: "1.7.6"
     )
 ]
 ```
