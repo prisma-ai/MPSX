@@ -2,21 +2,32 @@ import MetalPerformanceShadersGraph
 
 extension MPSGraph {
     func input(
-        shape: [NSNumber]?,
+        shape: [NSNumber],
         dataType: MPSDataType,
         valuesRange: SIMD2<Float>?,
+        isImage: Bool,
         name: String?
     ) -> MPSGraphTensor {
-        let inputTensor = placeholder(
+        var shape = shape
+
+        if isImage {
+            shape.move(from: 1, to: 3)
+        }
+
+        var input = placeholder(
             shape: shape,
             dataType: dataType,
             name: name
         )
 
-        if let valuesRange {
-            return (valuesRange.y - valuesRange.x) * inputTensor + valuesRange.x
+        if isImage {
+            input = input.toNCHW()
         }
 
-        return inputTensor
+        if let valuesRange {
+            input = (valuesRange.y - valuesRange.x) * input + valuesRange.x
+        }
+
+        return input
     }
 }

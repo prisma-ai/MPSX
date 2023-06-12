@@ -3,11 +3,19 @@ import MetalPerformanceShadersGraph
 extension MPSGraph {
     func output(
         tensor: MPSGraphTensor,
-        valuesRange: SIMD2<Float>?
+        valuesRange: SIMD2<Float>?,
+        isImage: Bool
     ) -> MPSGraphTensor {
+        var output = tensor
+
         if let valuesRange {
-            return (tensor - valuesRange.x) / (valuesRange.y - valuesRange.x)
+            output = (output - valuesRange.x) / (valuesRange.y - valuesRange.x)
         }
-        return tensor
+
+        if isImage {
+            output = output.toNHWC()
+        }
+
+        return output
     }
 }

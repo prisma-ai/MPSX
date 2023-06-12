@@ -3,8 +3,6 @@ import Foundation
 public final class OnnxModel {
     // MARK: Lifecycle
 
-    /// Initialize an instance of the onnx model with some preparation for later compilation of the mps graph
-    /// - Parameter data: onnx protobuf bytes
     public init(data: Data) throws {
         let proto = try Onnx_ModelProto(serializedData: data)
 

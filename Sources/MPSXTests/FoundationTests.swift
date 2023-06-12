@@ -5,7 +5,6 @@ import MetalPerformanceShadersGraph
 import XCTest
 
 final class FoundationTests: XCTestCase {
-    /// test [Float] -> Data -> [Float] conversion
     func testDataArrayConversion() {
         let array1 = (0 ..< 10).map { _ in
             Float.random(in: -5 ... 5)
@@ -18,8 +17,7 @@ final class FoundationTests: XCTestCase {
         XCTAssert(array1 == array2)
     }
 
-    /// Test fast floats conversion
-    func testFPC() {
+    func testFastFloatConversion() {
         func _test<U: Numeric, V: Numeric>(range: Range<Int> = 0 ..< 10, body: ([U]) -> [V], compare _: (V, V) -> Bool) -> Bool {
             let shuffledRange = range.shuffled()
             let input = shuffledRange.map { U(exactly: $0)! }
@@ -42,17 +40,19 @@ final class FoundationTests: XCTestCase {
         XCTAssertTrue(_test(body: { (x: [UInt32]) in FPC._UInt32_Float32(x) }, compare: ==))
     }
 
-    /// Test image processing using MPSCompiledGraph and MPSGraph DSL
     func testCompiledGraphWithDSL() async throws {
         let gpu = GPU.default
 
         let inputTexture = try await texture(bundlePath: "\(testResourcesPath)/tiger.jpg")
 
-        let compiledGraph = MPSCompiledGraph(device: gpu.device) { graph in
+        let compiledGraph = MPSCompiledGraph(
+            device: gpu.device,
+            options: .init(runtimeTypeInference: true)
+        ) { graph in
             let image = graph.imagePlaceholder(
                 dataType: .float32,
-                height: inputTexture.height,
-                width: inputTexture.width,
+                height: -1,
+                width: -1,
                 channels: 3,
                 name: "X"
             )
@@ -70,11 +70,7 @@ final class FoundationTests: XCTestCase {
         }
 
         let outputTexture = gpu.commandQueue.sync {
-            compiledGraph(.NHWC(
-                texture: inputTexture,
-                matching: compiledGraph.input,
-                in: $0
-            ), in: $0).texture2D(pixelFormat: .rgba8Unorm, converter: gpu.imageConverter, in: $0)
+            compiledGraph(.texture(inputTexture), in: $0).texture(pixelFormat: .r8Unorm, in: $0)
         }
 
         let reference = try await texture(bundlePath: "\(testResourcesPath)/dsl_reference.jpg")
@@ -82,17 +78,19 @@ final class FoundationTests: XCTestCase {
         XCTAssert(compare(texture: outputTexture, with: reference))
     }
 
-    /// Test image processing using MPSCompiledGraph
     func testStencilOperator() async throws {
         let gpu = GPU.default
 
         let inputTexture = try await texture(bundlePath: "\(testResourcesPath)/tiger.jpg")
 
-        let compiledGraph = MPSCompiledGraph(device: gpu.device) { graph in
+        let compiledGraph = MPSCompiledGraph(
+            device: gpu.device,
+            options: .init(runtimeTypeInference: true)
+        ) { graph in
             let image = graph.imagePlaceholder(
                 dataType: .float16,
-                height: 1024,
-                width: 1024,
+                height: -1,
+                width: -1,
                 channels: 3,
                 name: "input_image"
             )
@@ -121,21 +119,14 @@ final class FoundationTests: XCTestCase {
         }
 
         let outputTexture = gpu.commandQueue.sync {
-            compiledGraph(.NHWC(
-                texture: inputTexture,
-                matching: compiledGraph.input,
-                in: $0
-            ), in: $0).texture2D(pixelFormat: .rgba8Unorm, converter: gpu.imageConverter, in: $0)
+            compiledGraph(.texture(inputTexture), in: $0).texture(pixelFormat: .rgba8Unorm, in: $0)
         }
-
-        try save(texture: outputTexture, arg: 1)
 
         let reference = try await texture(bundlePath: "\(testResourcesPath)/stencil_ref.jpg")
 
         XCTAssert(compare(texture: outputTexture, with: reference))
     }
 
-    /// Test MPSCompiledGraph multi input/multi output
     func testCompiledGraphMultipleInputsAndMultipleOutputs() async throws {
         let gpu = GPU.default
 
@@ -165,9 +156,9 @@ final class FoundationTests: XCTestCase {
         let results = gpu.commandQueue.sync { commandBuffer in
             compiledGraph(
                 [
-                    "X": .floats(x, device: gpu.device),
-                    "Y": .floats(y, device: gpu.device),
-                    "Z": .floats(z, device: gpu.device),
+                    "X": .floats(x),
+                    "Y": .floats(y),
+                    "Z": .floats(z),
                 ],
                 in: commandBuffer
             ).mapValues {
@@ -184,5 +175,39 @@ final class FoundationTests: XCTestCase {
         XCTAssert(results["w"]!.count == w.count && zip(results["w"]!, w).allSatisfy {
             abs($0.0 - $0.1) < eps
         })
+    }
+
+    func testPixelFormatFeatureChannels() {
+        let possiblePixelFormats: [MTLPixelFormat] = [
+            .r8Unorm,
+            .rg8Unorm,
+            .rgba8Unorm,
+            .bgra8Unorm,
+            .r8Unorm_srgb,
+            .rg8Unorm_srgb,
+            .rgba8Unorm_srgb,
+            .bgra8Unorm_srgb,
+            .r16Unorm,
+            .rg16Unorm,
+            .rgba16Unorm,
+            .r16Float,
+            .rg16Float,
+            .rgba16Float,
+            .r32Float,
+            .rg32Float,
+            .rgba32Float,
+        ]
+
+        GPU.default.commandQueue.sync { commandBuffer in
+            for pixelFormat in possiblePixelFormats {
+                let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: pixelFormat, width: 1, height: 1, mipmapped: false)
+
+                let tmp = MPSTemporaryImage(commandBuffer: commandBuffer, textureDescriptor: d)
+
+                XCTAssert(tmp.featureChannels == pixelFormat.featureChannels)
+
+                tmp.readCount = 0
+            }
+        }
     }
 }

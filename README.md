@@ -63,18 +63,19 @@ done;
 
 # Code examples
 
-1) [DSL example](/Sources/MPSXTests/FoundationTests.swift#L46)
-2) [Laplacian edge filter](/Sources/MPSXTests/FoundationTests.swift#L86)
-3) [Image MSE comparison](/Sources/MPSXTests/TestUtilities.swift#L159)
-4) [ONNX style transfer](/Sources/MPSXTests/OnnxTests.swift#L58)
+1) [DSL example](/Sources/MPSXTests/FoundationTests.swift#L43)
+2) [Laplacian edge filter](/Sources/MPSXTests/FoundationTests.swift#L81)
+3) [Image MSE comparison](/Sources/MPSXTests/TestUtilities.swift#L154)
+4) [ONNX style transfer](/Sources/MPSXTests/OnnxTests.swift#L53)
 5) [ONNX image classification](/Sources/MPSXTests/OnnxTests.swift#L10)
 
 # Useful links
 
 1) [MPSCommandBuffer explanation](https://developer.apple.com/videos/play/wwdc2019/614/?time=1284)
-2) [MPSGraph - WWDC 2022](https://developer.apple.com/videos/play/wwdc2022/10063)
+2) [MPSGraph - WWDC 2020](https://developer.apple.com/videos/play/wwdc2020/10677)
 3) [MPSGraph - WWDC 2021](https://developer.apple.com/videos/play/wwdc2021/10152)
-4) [MPSGraph - WWDC 2020](https://developer.apple.com/videos/play/wwdc2020/10677)
+4) [MPSGraph - WWDC 2022](https://developer.apple.com/videos/play/wwdc2022/10063)
+5) [MPSGraph - WWDC 2023](https://developer.apple.com/videos/play/wwdc2023/10050)
 
 # Installation
 
@@ -82,9 +83,6 @@ Swift Package Manager:
 
 ``` swift
 dependencies: [
-    .package(
-        url: "https://github.com/prisma-ai/MPSX.git",
-        from: "1.7.6"
-    )
+    .package(url: "https://github.com/prisma-ai/MPSX.git", from: "1.8.0")
 ]
 ```

@@ -5,12 +5,21 @@ public final class MPSCompiledGraph {
     // MARK: Lifecycle
 
     public convenience init(
-        options: MPSGraphOptions = .none,
-        compilationDescriptor: MPSGraphCompilationDescriptor? = nil,
         device: MTLDevice,
+        options: Options = .init(),
         body: (MPSGraph) throws -> [String: MPSGraphTensor]
     ) rethrows {
-        let graph = MPSGraph(options: options)
+        let graph = MPSGraph(options: options.verboseLog ? .verbose : .none)
+
+        let compilationDescriptor = MPSGraphCompilationDescriptor()
+
+        if #available(iOS 15.4, macOS 12.3, *) {
+            compilationDescriptor.optimizationLevel = options.hardwareOptimization ? .level1 : .level0
+        }
+
+        if options.runtimeTypeInference {
+            compilationDescriptor.disableTypeInference()
+        }
 
         let outputTensors = try autoreleasepool {
             try body(graph)
@@ -55,36 +64,58 @@ public final class MPSCompiledGraph {
 
     // MARK: Public
 
+    public struct Options {
+        // MARK: Lifecycle
+
+        public init(
+            hardwareOptimization: Bool = false,
+            runtimeTypeInference: Bool = false,
+            verboseLog: Bool = false
+        ) {
+            self.hardwareOptimization = hardwareOptimization
+            self.runtimeTypeInference = runtimeTypeInference
+            self.verboseLog = verboseLog
+        }
+
+        // MARK: Public
+
+        public var hardwareOptimization: Bool = false
+        public var runtimeTypeInference: Bool = false
+        public var verboseLog: Bool = false
+    }
+
+    public enum Input {
+        case texture(MTLTexture)
+        case floats([Float], shape: [Int]? = nil)
+        case data(MPSGraphTensorData)
+    }
+
     public let inputs: [String: MPSGraphTensor]
     public let outputs: [String: MPSGraphTensor]
 
-    /// single input -> single output
     public func callAsFunction(
-        _ input: MPSGraphTensorData,
+        _ input: Input,
         in commandBuffer: MPSCommandBuffer
     ) -> MPSGraphTensorData {
         encode(to: commandBuffer, inputs: [input])[0]
     }
 
-    /// multiple inputs -> single output
     public func callAsFunction(
-        _ inputs: [String: MPSGraphTensorData],
+        _ inputs: [String: Input],
         in commandBuffer: MPSCommandBuffer
     ) -> MPSGraphTensorData {
         encode(to: commandBuffer, inputs: array(inputs))[0]
     }
 
-    /// single input  -> multiple outputs
     public func callAsFunction(
-        _ input: MPSGraphTensorData,
+        _ input: Input,
         in commandBuffer: MPSCommandBuffer
     ) -> [String: MPSGraphTensorData] {
         dictionary(encode(to: commandBuffer, inputs: [input]))
     }
 
-    /// multiple inputs -> multiple outputs
     public func callAsFunction(
-        _ inputs: [String: MPSGraphTensorData],
+        _ inputs: [String: Input],
         in commandBuffer: MPSCommandBuffer
     ) -> [String: MPSGraphTensorData] {
         dictionary(encode(to: commandBuffer, inputs: array(inputs)))
@@ -96,9 +127,9 @@ public final class MPSCompiledGraph {
     private let executable: MPSGraphExecutable
     private let outputKeys: [String: String]
 
-    private func array(_ inputs: [String: MPSGraphTensorData]) -> [MPSGraphTensorData] {
-        (executable.feedTensors ?? []).compactMap {
-            inputs[$0.operation.name]
+    private func array(_ inputs: [String: Input]) -> [Input] {
+        (executable.feedTensors ?? []).map {
+            inputs[$0.operation.name]!
         }
     }
 
@@ -110,11 +141,37 @@ public final class MPSCompiledGraph {
         }
     }
 
-    private func encode(to commandBuffer: MPSCommandBuffer, inputs: [MPSGraphTensorData]) -> [MPSGraphTensorData] {
+    private func encode(to commandBuffer: MPSCommandBuffer, inputs: [Input]) -> [MPSGraphTensorData] {
+        let _inputs: [(
+            data: MPSGraphTensorData,
+            ndArray: MPSTemporaryNDArray?
+        )] = zip(executable.feedTensors ?? [], inputs).map { tensor, input in
+            switch input {
+            case let .data(data):
+                return (data, nil)
+            case let .floats(floats, shape: shape):
+                return (.floats(floats, shape: shape, device: commandBuffer.device), nil)
+            case let .texture(texture):
+                let shape = tensor.ishape
+
+                assert(shape.count == 4)
+
+                let ndArray = texture.toNDArray(
+                    dataType: tensor.dataType,
+                    featureChannels: shape[3],
+                    targetWidth: shape[2],
+                    targetHeight: shape[1],
+                    in: commandBuffer
+                )
+
+                return (.init(ndArray), ndArray)
+            }
+        }
+
         let outputs = autoreleasepool {
             executable.encode(
                 to: commandBuffer,
-                inputs: inputs,
+                inputs: _inputs.map(\.data),
                 results: nil,
                 executionDescriptor: nil
             )
@@ -124,13 +181,7 @@ public final class MPSCompiledGraph {
             _ = self // keep self alive until completion
         }
 
-        inputs.compactMap {
-            $0.value(forKey: "_mpsndarray") as? MPSTemporaryNDArray
-        }.filter {
-            $0.readCount > 0
-        }.forEach {
-            $0.readCount = 0
-        }
+        _inputs.forEach { $0.ndArray?.readCount = 0 }
 
         return outputs
     }
@@ -143,5 +194,19 @@ public extension MPSCompiledGraph {
 
     var output: MPSGraphTensor {
         outputs.first!.value
+    }
+}
+
+public extension MPSCompiledGraph {
+    func warmUp(in commandBuffer: MPSCommandBuffer) {
+        let randomInputs: [String: Input] = MPSCompiledGraph(device: commandBuffer.device) { g in
+            inputs.mapValues { t in
+                g.randomUniformTensor(withShape: t.shape ?? [], name: nil).cast(to: t.dataType)
+            }
+        }([:], in: commandBuffer).mapValues {
+            .data($0)
+        }
+
+        let _: [String: MPSGraphTensorData] = self(randomInputs, in: commandBuffer)
     }
 }

@@ -137,9 +137,6 @@ final class GPU {
     init(commandQueue: MTLCommandQueue) {
         self.commandQueue = commandQueue
         textureLoader = .init(device: commandQueue.device)
-        imageScaler = MPSImageBilinearScale(device: commandQueue.device)
-        imageScaler.edgeMode = .clamp
-        imageConverter = .init(device: commandQueue.device)
     }
 
     // MARK: Internal
@@ -148,8 +145,6 @@ final class GPU {
 
     let commandQueue: MTLCommandQueue
     let textureLoader: MTKTextureLoader
-    let imageScaler: MPSImageScale
-    let imageConverter: MPSImageConversion
 
     var device: MTLDevice {
         commandQueue.device
@@ -157,12 +152,15 @@ final class GPU {
 }
 
 func compare(texture: MTLTexture, with reference: MTLTexture, treshold: Float = 1e-3) -> Bool {
-    let graph = MPSCompiledGraph(device: GPU.default.device) { graph in
+    let graph = MPSCompiledGraph(
+        device: GPU.default.device,
+        options: .init(runtimeTypeInference: true)
+    ) { graph in
         let x = graph.imagePlaceholder(
             dataType: .float32,
             height: reference.height,
             width: reference.width,
-            channels: 3,
+            channels: -1,
             name: "X"
         )
 
@@ -170,7 +168,7 @@ func compare(texture: MTLTexture, with reference: MTLTexture, treshold: Float = 
             dataType: .float32,
             height: reference.height,
             width: reference.width,
-            channels: 3,
+            channels: -1,
             name: "Y"
         )
 
@@ -181,8 +179,8 @@ func compare(texture: MTLTexture, with reference: MTLTexture, treshold: Float = 
 
     let result = GPU.default.commandQueue.sync {
         graph([
-            "X": .NHWC(texture: texture, matching: graph.inputs["X"]!, in: $0),
-            "Y": .NHWC(texture: reference, matching: graph.inputs["Y"]!, in: $0),
+            "X": .texture(texture),
+            "Y": .texture(reference),
         ], in: $0).synchronizedNDArray(in: $0)
     }.floats
 
@@ -220,7 +218,7 @@ func inputTexture(arg: Int) async throws -> MTLTexture {
 func save(texture: MTLTexture, arg: Int) throws {
     let image = texture.cgImage()
 
-    try image?.jpeg()?.write(
+    try image?.jpeg(compressionQuality: 0.85)?.write(
         to: .init(
             fileURLWithPath: CommandLine.arguments[arg]
         ),

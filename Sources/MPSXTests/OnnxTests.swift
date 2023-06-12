@@ -14,28 +14,23 @@ final class OnnxTests: XCTestCase {
 
         let gpu = GPU.default
 
-        let graph = try OnnxGraph(
-            model: model,
+        let graph = try MPSCompiledGraph(
+            onnxModel: model,
             device: gpu.device,
             config: .init(
+                inputs: [model.inputs[0].name: .init(isImage: true)],
                 outputs: [model.outputs[0]: .init(valuesRange: [-10, 10])],
                 tensorsDataType: .fp16
             )
         )
 
-        let input: MPSGraphTensorData = gpu.commandQueue.sync {
+        gpu.commandQueue.sync {
             graph.warmUp(in: $0)
-
-            return .NCHW(
-                texture: inputTexture,
-                matching: graph.inputs.first!.value,
-                in: $0
-            )
         }
 
         func predict() -> MPSGraphTensorData {
             gpu.commandQueue.sync {
-                try! graph(input, in: $0)
+                graph(.texture(inputTexture), in: $0)
             }
         }
 
@@ -61,28 +56,23 @@ final class OnnxTests: XCTestCase {
 
         let gpu = GPU.default
 
-        let graph = try OnnxGraph(
-            model: model,
+        let graph = try MPSCompiledGraph(
+            onnxModel: model,
             device: gpu.device,
             config: .init(
-                outputs: [model.outputs[0]: .init(valuesRange: .init(0, 255))],
+                inputs: [model.inputs[0].name: .init(isImage: true)],
+                outputs: [model.outputs[0]: .init(valuesRange: .init(0, 255), isImage: true)],
                 tensorsDataType: .fp16
             )
         )
 
-        let input: MPSGraphTensorData = gpu.commandQueue.sync {
+        gpu.commandQueue.sync {
             graph.warmUp(in: $0)
-
-            return .NCHW(
-                texture: inputImage,
-                matching: graph.inputs.first!.value,
-                in: $0
-            )
         }
 
         func styleTransfer() -> MPSGraphTensorData {
             gpu.commandQueue.sync {
-                try! graph(input, in: $0)
+                graph(.texture(inputImage), in: $0)
             }
         }
 
@@ -93,11 +83,7 @@ final class OnnxTests: XCTestCase {
         let rawData = styleTransfer()
 
         let outputTexture = gpu.commandQueue.sync {
-            rawData.nhwc(in: $0).texture2D(
-                pixelFormat: .rgba8Unorm,
-                converter: gpu.imageConverter,
-                in: $0
-            )
+            rawData.texture(pixelFormat: .rgba8Unorm, in: $0)
         }
 
         let reference = try await texture(bundlePath: "\(testResourcesPath)/candy-8-tiger.jpg")

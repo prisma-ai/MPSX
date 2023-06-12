@@ -4,10 +4,8 @@ import MetalPerformanceShadersGraph
 extension OnnxGraphConfig.TensorsDataType {
     var mpsDataType: MPSDataType {
         switch self {
-        case .fp16:
-            return .float16
-        case .fp32:
-            return .float32
+        case .fp16: return .float16
+        case .fp32: return .float32
         }
     }
 }
