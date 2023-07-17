@@ -18,6 +18,10 @@ extension MPSGraph {
             return leakyReLU(with: x, alpha: Double(alpha), name: nil)
         }
 
+        if let alpha = node.attr(f: "alpha") {
+            return leakyReLU(with: x, alpha: Double(alpha), name: nil)
+        }
+
         throw OnnxError.invalidInput(node.name)
     }
 }
