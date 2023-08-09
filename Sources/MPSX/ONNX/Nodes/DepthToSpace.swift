@@ -7,25 +7,20 @@ extension MPSGraph {
         _ tensors: [String: MPSGraphTensor]
     ) throws -> MPSGraphTensor {
         guard let input = tensors(node.input(0)),
-              let shape = input.quadShape,
+              input.quadShape != nil,
               let blocksize = node.attr(i: "blocksize")
         else { throw OnnxError.invalidInput(node.name) }
 
-        let (b, c, h, w) = shape
+        let output = depth(
+            toSpace2DTensor: input,
+            widthAxis: 3,
+            heightAxis: 2,
+            depthAxis: 1,
+            blockSize: blocksize,
+            usePixelShuffleOrder: node.attr(s: "mode") == "CRD",
+            name: nil
+        )
 
-        var x = input
-
-        switch node.attr(s: "mode") {
-        case "CRD":
-            x = x.reshape([b, c / (blocksize * blocksize), blocksize, blocksize, h, w])
-            x = x.transpose([0, 1, 4, 2, 5, 3])
-        default: // "DCR"
-            x = x.reshape([b, blocksize, blocksize, c / (blocksize * blocksize), h, w])
-            x = x.transpose([0, 3, 4, 1, 5, 2])
-        }
-
-        x = x.reshape([b, c / (blocksize * blocksize), h * blocksize, w * blocksize])
-
-        return x
+        return output
     }
 }
