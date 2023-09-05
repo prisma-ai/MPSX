@@ -345,8 +345,8 @@ public extension MPSGraphTensor {
 
 public extension MPSGraphTensor {
     @inlinable
-    func sum(axes: [Int]) -> MPSGraphTensor {
-        operation.graph.reductionSum(with: self, axes: axes.nsnumbers, name: nil)
+    func sum(axes: [Int]? = nil) -> MPSGraphTensor {
+        operation.graph.reductionSum(with: self, axes: axes?.nsnumbers, name: nil)
     }
 
     @inlinable
@@ -376,6 +376,11 @@ public extension MPSGraphTensor {
 }
 
 public extension MPSGraphTensor {
+    @inlinable
+    func saturate() -> MPSGraphTensor {
+        clamp(min: .zero, max: 1.0)
+    }
+
     @inlinable
     func clamp(min: Float, max: Float) -> MPSGraphTensor {
         operation.graph.clamp(self, min: const(min), max: const(max), name: nil)

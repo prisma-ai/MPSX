@@ -69,8 +69,9 @@ extension MPSGraph {
             output = try shape(node, tensors)
         case "Relu":
             output = try relu(node, tensors)
-        case "PRelu",
-             "LeakyRelu":
+        case "LeakyRelu":
+            output = try leakyRelu(node, tensors)
+        case "PRelu":
             output = try prelu(node, tensors, constants)
         case "Elu":
             output = try elu(node, tensors)
