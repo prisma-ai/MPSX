@@ -124,10 +124,31 @@ extension Onnx_TensorProto {
     }
 
     var ints: [Int]? {
-        _dataType.flatMap(rawData.signedIntegers(assumingIntegerDataType:))
+        _dataType.flatMap {
+            switch $0 {
+            case .int32:
+                if !self.int32Data.isEmpty {
+                    return self.int32Data.map { Int($0) }
+                }
+            case .int64:
+                if !self.int64Data.isEmpty {
+                    return self.int64Data.map { Int($0) }
+                }
+            default:
+                break
+            }
+            return rawData.signedIntegers(assumingIntegerDataType: $0)
+        }
     }
 
     var uints: [UInt]? {
-        _dataType.flatMap(rawData.unsignedIntegers(assumingIntegerDataType:))
+        _dataType.flatMap {
+            if case .uint64 = $0 {
+                if !self.uint64Data.isEmpty {
+                    return self.uint64Data.map { UInt($0) }
+                }
+            }
+            return rawData.unsignedIntegers(assumingIntegerDataType: $0)
+        }
     }
 }
