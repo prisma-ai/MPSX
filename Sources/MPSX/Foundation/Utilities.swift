@@ -288,7 +288,8 @@ public extension MPSGraphTensorData {
 
     func temporaryImage(
         pixelFormat: MTLPixelFormat? = nil,
-        in commandBuffer: MPSCommandBuffer
+        in commandBuffer: MPSCommandBuffer,
+        storageMode: MTLStorageMode = .private
     ) -> MPSTemporaryImage {
         let source = toImage(in: commandBuffer)
 
@@ -303,7 +304,7 @@ public extension MPSGraphTensorData {
             mipmapped: false
         )
         textureDescriptor.usage = [.shaderRead, .shaderWrite]
-        textureDescriptor.storageMode = .private
+        textureDescriptor.storageMode = storageMode
 
         let destination = MPSTemporaryImage(
             commandBuffer: commandBuffer,
